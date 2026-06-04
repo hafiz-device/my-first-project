@@ -15,8 +15,21 @@ while True:
     print("5. Exit")
 
     choice = input("Enter your choice (1-5): ")
-    if choice == "1":
-        print("Opening Student Registration...")
+    if choice =="1":
+        print("================================")
+        print("     Student REGISTRATION")
+        print("================================")
+        name = input("Enter student name: ")
+        age = input("Enter student age: ")
+        class_name = input("Enter class: ")
+        section = input("Enter section (Academic/Islamic): ")
+        print("================================")
+        print("Student Registered Successfully!")
+        print("Name: " + name)
+        print("Age: " + age)
+        print("Class: " + class_name)
+        print("section: " + section)
+        print("================================")
     elif choice == "2":
         print("Opening Attendance...")
     elif choice == "3":
@@ -25,7 +38,7 @@ while True:
         print("Opening Fee Management...")
     elif choice == "5":
         print("Goodbye! Thank you for using ShcoolPro Ghana!")
-        break 
+        break
     else:
         print("invalid choise! Please enter 1-5")
                        
