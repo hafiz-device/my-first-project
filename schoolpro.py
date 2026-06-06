@@ -1,3 +1,4 @@
+from schoolpro_database import save_student
 # SchoolPro Ghana 
 # School Management Software 
 # Developer: Issahak Abdul Halim(Hafiz)
@@ -30,6 +31,7 @@ while True:
         print("Class: " + class_name)
         print("section: " + section)
         print("================================")
+        save_student(name, age, class_name, section)
     elif choice == "2":
         print("================================")
         print("        Attendance")
