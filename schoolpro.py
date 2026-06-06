@@ -58,8 +58,19 @@ while True:
         print("Score: " + score)
         print("Grade: " + grade)
         print("================================")
-    elif choice == "4":
-        print("Opening Fee Management...")
+    elif choice =="4":
+        print("================================")
+        print("       FEE MANAGEMENT")
+        print("================================")
+        name = input("Enter student name: ")
+        amount = input("Enter amount paid (GHS): ")
+        date = input("Enter date of payment: ")
+        print("================================")
+        print("Fee Recorded Successfully!")
+        print("Student: " + name)
+        print("Amount Paid: GHS" + amount)
+        print("Date: " + date)
+        print("================================")
     elif choice == "5":
         print("Goodbye! Thank you for using ShcoolPro Ghana!")
         break
