@@ -1,4 +1,5 @@
 from schoolpro_database import save_student
+import sqlite3
 # SchoolPro Ghana 
 # School Management Software 
 # Developer: Issahak Abdul Halim(Hafiz)
@@ -13,9 +14,12 @@ while True:
     print("2. Attendance")
     print("3. Grades & Results")
     print("4. Fee Management")
-    print("5. Exit")
+    print("5. Teachers/Staff Management")
+    print("6. View All Student")
+    print("7. Exit")
+    print("====================================")
 
-    choice = input("Enter your choice (1-5): ")
+    choice = input("Enter your choice (1-7): ")
     if choice =="1":
         print("================================")
         print("     Student REGISTRATION")
@@ -74,6 +78,42 @@ while True:
         print("Date: " + date)
         print("================================")
     elif choice == "5":
+        print("===========================================")
+        print("        TEACHER/STAFF MANAGEMENT")
+        print("===========================================") 
+        name = input("Entert teacher name: ")
+        subject= input("Enter subject: ")
+        class_name = input("Enter class: ")
+        phone = input("Enter phone number: ")
+        section = input("Enter section (Academic/Islamic): ")
+        print("============================================")
+        print("Teacher Registration Successfully!")
+        print("Name: " + name)
+        print("Subject: " + subject)
+        print("section: " + section)
+        print("============================================")       
+    elif choice == "6":
+        print("================================")
+        print("        ALL STUDENT")
+        print("================================")
+        conn = sqlite3.connect(' schoolpro.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM students")
+        students = cursor.fetchall()
+        conn.close()
+        if len(students) == 0:
+            print("No students Registerd yet!")
+        else:
+            for student in students:
+                print("ID: " + str(student[0]))
+                print("Name: " + student[1])
+                print("Age: " + student[2])
+                print("Class: " + student[3])
+                print("Section: " + student[4])
+                print("----------------")
+        print("================================")
+
+    elif choice == "7":
         print("Goodbye! Thank you for using ShcoolPro Ghana!")
         break
     else:
