@@ -1,121 +1,208 @@
-from schoolpro_database import save_student
-import sqlite3
-# SchoolPro Ghana 
-# School Management Software 
-# Developer: Issahak Abdul Halim(Hafiz)
+# Schoolpro Ghana
+# School Management Software
+# Developer: Issahak Abdul Halim (Hafiz)
 # Version: 1.0
 
+import sqlite3
+from datetime import date
+
+# Connect to database 
+conn = sqlite3.connect("schoolpro.db")
+cursor = conn.cursor()
+
+# Creat tables 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS students (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        age TEXT,
+        gender TEXT,
+        class_name TEXT,
+        section TEXT,
+        parent_name TEXT,
+        parent_phone TEXT,
+        date_registered TEXT
+    )
+""")
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_name TEXT,
+        date TEXT,
+        status TEXT
+    )
+""")
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS  grades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_name TEXT,
+        subject TEXT,
+        score TEXT,
+        grade TEXT,
+        term TEXT,
+        year TEXT 
+    )
+""")
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS fees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_name TEXT, 
+        amount TEXT, 
+        date TEXT, 
+        term TEXT,
+        status TEXT 
+    )
+""")
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS teachers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        subject TEXT,
+        class_name TEXT,
+        phone TEXT,
+        section TEXT
+    )
+""")
+
+conn.commit()
+
 while True:
-    print("===================================")
+    print("========================================")
     print("Welcome to SchoolPro Ghana!")
-    print("School Management Software")
-    print("===================================")
+    print(" School Management Software")
+    print("========================================")
     print("1. Student Registration")
     print("2. Attendance")
     print("3. Grades & Results")
     print("4. Fee Management")
-    print("5. Teachers/Staff Management")
-    print("6. View All Student")
+    print("5. Teacher/Staff Management")
+    print("6. View All Students")
     print("7. Exit")
-    print("====================================")
+    print("========================================")
 
-    choice = input("Enter your choice (1-7): ")
-    if choice =="1":
-        print("================================")
-        print("     Student REGISTRATION")
-        print("================================")
+    choice = input("Enter your choice from (1-7): ")
+
+    if choice == "1":
+        print("========================================")
+        print("     STUDENT REGISTRATION")
+        print("========================================")
         name = input("Enter student name: ")
         age = input("Enter student age: ")
+        gender = input("Enter gender (Male/Female): ")
         class_name = input("Enter class: ")
         section = input("Enter section (Academic/Islamic): ")
-        print("================================")
-        print("Student Registered Successfully!")
-        print("Name: " + name)
-        print("Age: " + age)
-        print("Class: " + class_name)
-        print("section: " + section)
-        print("================================")
-        save_student(name, age, class_name, section)
+        parent_name = input("Enter parent name: ")
+        parent_phone = input("Enter parent phone: ")
+        today = str(date.today())
+        cursor.execute(
+            "INSERT INTO students (name, age, gender, class_name, section, parent_name, parent_phone, date_registered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, age, gender, class_name, section, parent_name, parent_phone, today)
+        )
+        conn.commit()
+        print("=========================================")
+        print("Student Registerd Successfully!")
+        print("=========================================")
+
     elif choice == "2":
-        print("================================")
-        print("        Attendance")
-        print("================================")
-        name = input("Enter student name: ")
-        date = input("Enter date: ")
+        print("=========================================")
+        print("           ATTENDANCE")
+        print("=========================================")
+        student_name = input("Enter student name: ")
         status = input("Enter status (Present/Absent): ")
-        print("================================")
+        today = str(date.today())
+        cursor.execute(
+            "INSERT INTO attendance (student_name, date, status) VALUES (?, ?, ?)",
+            (student_name, today, status)
+        )
+        conn.commit()
+        print("==========================================")
         print("Attendance Recorded Successfully!")
-        print("Student: " + name)
-        print("Date: " + date)
-        print("Status: " + status)
-        print("================================")
+        print("==========================================")
+
     elif choice == "3":
-        print("================================")
-        print("        GRADES & RESULTS")
-        print("================================")
-        name = input("Enter student name: ")
+        print("==========================================")
+        print("       GRADES & RESULTS")
+        print("==========================================")
+        student_name = input("Enter student name: ")
         subject = input("Enter subject: ")
         score = input("Enter score: ")
-        grade = input("Enter grade (A/B/C/D/F): ")
-        print("================================")
+        grade = input("Enter grade(A/B/C/D/F): ")
+        term = input("Enter term (1/2/3): ")
+        year = input("Enter year: ")
+        cursor.execute(
+            "INSERT INTO grades (student_name, subject, score, grade, term, year) VALUES (?, ?, ?, ?, ?, ?)",
+            (student_name, subject, score, grade, term, year)
+        )
+        conn.commit()
+        print("==========================================")
         print("Grades Recorded Successfully!")
-        print("Student: " + name)
-        print("Subject: " + subject)
-        print("Score: " + score)
-        print("Grade: " + grade)
-        print("================================")
-    elif choice =="4":
-        print("================================")
+        print("==========================================")
+        
+    elif choice == "4":
+        print("==========================================")
         print("       FEE MANAGEMENT")
-        print("================================")
-        name = input("Enter student name: ")
-        amount = input("Enter amount paid (GHS): ")
-        date = input("Enter date of payment: ")
-        print("================================")
-        print("Fee Recorded Successfully!")
-        print("Student: " + name)
-        print("Amount Paid: GHS" + amount)
-        print("Date: " + date)
-        print("================================")
+        print("==========================================")
+        student_name = input("Enter student name: ")
+        amount = input("Enter amountpaid (GHS): ")
+        term = input("Enter term (1/2/3): ")
+        status = input("Enter status (Paid/Partial/Unpaid): ")
+        today = str(date.today())
+        cursor.execute(
+            "INSERT INTO fees (student_name, amount, date, term, status) VALUES (?, ?, ?, ?, ?)",
+            (student_name, amount, today, term, status)
+        ) 
+        conn.commit()
+        print("==========================================")
+        print("Fee Recorded Successwfully!")
+        print("==========================================")
+
     elif choice == "5":
-        print("===========================================")
-        print("        TEACHER/STAFF MANAGEMENT")
-        print("===========================================") 
-        name = input("Entert teacher name: ")
-        subject= input("Enter subject: ")
+        print("==========================================")
+        print("   TEACHER/STAFF MANAGEMENT")
+        print("==========================================")
+        name = input("Enter teacher name: ")
+        subject = input("Enter subject: ")
         class_name = input("Enter class: ")
         phone = input("Enter phone number: ")
         section = input("Enter section (Academic/Islamic): ")
-        print("============================================")
-        print("Teacher Registration Successfully!")
-        print("Name: " + name)
-        print("Subject: " + subject)
-        print("section: " + section)
-        print("============================================")       
+        cursor.execute(
+            "INSERT INTO teachers (name, subject, class_name, phone, section) VALUES (?, ?, ?, ?, ?)",
+            (name, subject, class_name, phone, section)
+        ) 
+        conn.commit()
+        print("==========================================")
+        print("Teacher Registered Succesfully!")
+        print("==========================================")
+
     elif choice == "6":
-        print("================================")
-        print("        ALL STUDENT")
-        print("================================")
-        conn = sqlite3.connect(' schoolpro.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM students")
+        print("==========================================")
+        print("       ALL STUDENTS")
+        print("==========================================")
+        cursor.execute("SELECT * FROM  students")
         students = cursor.fetchall()
-        conn.close()
         if len(students) == 0:
-            print("No students Registerd yet!")
+            print("No students registerd yet!")
         else:
             for student in students:
                 print("ID: " + str(student[0]))
                 print("Name: " + student[1])
                 print("Age: " + student[2])
-                print("Class: " + student[3])
-                print("Section: " + student[4])
+                print("Gender: " + student[3])
+                print("Class: " + student[4])
+                print("Section: " + student[5])
+                print("parent: " + student[6])
+                print("phone: " + student[7])
+                print("Date: " + student[8])
                 print("----------------")
-        print("================================")
+        print("============================================")
 
     elif choice == "7":
-        print("Goodbye! Thank you for using ShcoolPro Ghana!")
+        print("Goodbye! Thank you for using SchoolPro Ghana!")
+        conn.close()
         break
     else:
-        print("invalid choise! Please enter 1-5")
-                       
+        print("Invalid choice! Please enter 1-7")
