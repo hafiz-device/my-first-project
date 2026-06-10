@@ -81,10 +81,11 @@ while True:
     print("4. Fee Management")
     print("5. Teacher/Staff Management")
     print("6. View All Students")
-    print("7. Exit")
+    print("7. Search Student")
+    print("8. Exit")
     print("========================================")
 
-    choice = input("Enter your choice from (1-7): ")
+    choice = input("Enter your choice from (1-8): ")
 
     if choice == "1":
         print("========================================")
@@ -201,6 +202,29 @@ while True:
         print("============================================")
 
     elif choice == "7":
+        print("============================================")
+        print("       SEARCH STUDENT")
+        print("============================================")
+        search_name = input("Enter student name to search: ")
+        cursor.execute("SELECT * FROM students WHERE name LIKE ?", ('%' + search_name + '%',))
+        results = cursor.fetchall()
+        if len(results) == 0:
+            print("No student found with that name!")
+        else:
+            for student in results:
+                print("ID: " + str(student[0]))
+                print("Name: " + student[1])
+                print("Age: " + student[2])
+                print("Gender: " + student[3])
+                print("Class: " + student[4])
+                print("Section: " + student[5])
+                print("parent: " + student[6])
+                print("Phone: " + student[7])
+                print("Date: " + student[8])
+                print("----------------")
+        print("============================================")                
+
+    elif choice == "8":
         print("Goodbye! Thank you for using SchoolPro Ghana!")
         conn.close()
         break
