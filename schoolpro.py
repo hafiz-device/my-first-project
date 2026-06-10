@@ -83,10 +83,11 @@ while True:
     print("6. View All Students")
     print("7. Search Student")
     print("8: View Attendance")
-    print("9. Exit")
+    print("9. View Fees")
+    print("10. Exit")
     print("========================================")
 
-    choice = input("Enter your choice from (1-9): ")
+    choice = input("Enter your choice from (1-10): ")
 
     if choice == "1":
         print("========================================")
@@ -240,9 +241,28 @@ while True:
                 print("Date: " + record[2])
                 print("Status: " + record[3])
                 print("----------------")
-        print("============================================")                               
+        print("============================================")  
 
     elif choice == "9":
+        print("============================================")
+        print("         VIEW FEES")
+        print("============================================")
+        cursor.execute("SELECT * FROM fees")
+        records = cursor.fetchall()
+        if len(records) == 0:
+            print("No fee record yet!")
+        else:
+            for record in records:
+                print("ID: " + str(record[0]))
+                print("Student: " + record[1])
+                print("Amount: " + record[2])
+                print("Date: " + record[3])
+                print("Term: " + record[4])
+                print("Status: " + record[5])
+                print("----------------")
+        print("=============================================")                                             
+
+    elif choice == "10":
         print("Goodbye! Thank you for using SchoolPro Ghana!")
         conn.close()
         break
