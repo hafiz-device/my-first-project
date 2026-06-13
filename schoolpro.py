@@ -26,6 +26,21 @@ cursor.execute("""
 """)
 
 cursor.execute("""
+    CREATE TABLE IF NOT EXISTS students (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        age TEXT,
+        gender TEXT,
+        class_name TEXT,
+        section TEXT,
+        parent_name TEXT,
+        parent_phone TEXT,
+        date_registered TEXT,
+        status TEXT DEFAULT 'Active'
+    )
+""")                          
+
+cursor.execute("""
     CREATE TABLE IF NOT EXISTS attendance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         student_name TEXT,
@@ -85,10 +100,11 @@ while True:
     print("8. View Attendance")
     print("9. View Fees")
     print("10. View Teachers")
-    print("11. Exit")
+    print("11. UPdate Student Status")
+    print("12. Exit")
     print("========================================")
 
-    choice = input("Enter your choice from (1-11): ")
+    choice = input("Enter your choice from (1-12): ")
 
     if choice == "1":
         print("========================================")
@@ -280,9 +296,33 @@ while True:
                 print("Phone: " + record[4])
                 print("Section: " + record[5])
                 print("-----------------")
-        print("=============================================")                                                           
+        print("=============================================")   
 
     elif choice == "11":
+        print("=============================================")
+        print("     UPDATE STUDENT STATUS")
+        print("=============================================")
+        search_name = input("Enter student name: ")
+        print("Status options:")
+        print("1. Active")
+        print("2. Graduated")
+        print("3. Transferred")
+        print("4. Suspended")
+        new_status = input("Enter new status: ")
+        cursor.execute(
+            "UPDATE students SET section = section WHERE name LIKE ?",
+            ('%' + search_name + '%',)
+        ) 
+        cursor.execute(
+            "UPDATE students SET status = ? WHERE name LIKE ?",
+            (new_status, '%' + search_name + '%')
+        ) 
+        conn.commit()
+        print("==============================================")  
+        print("Student Status Updated Successfully!")
+        print("==============================================")                                                         
+
+    elif choice == "12":
         print("Goodbye! Thank you for using SchoolPro Ghana!")
         conn.close()
         break
