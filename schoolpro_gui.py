@@ -8,9 +8,64 @@ import sqlite3
 from datetime import date 
 
 # Connect to database 
-conn = sqlite3.connect("Schoolpro.db")
+conn = sqlite3.connect("/home/hafiz/my-first-project/schoolpro.db")
 cursor = conn.cursor()
 
+def open_registration():
+    reg_window = tk.Toplevel(window)
+    reg_window.title("Student Registration")
+    reg_window.geometry("500x400")
+    reg_window.configure(bg="darkblue")
+
+    tk.Label(reg_window, text="STUDENT REGISTRATION", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    tk.Label(reg_window, text="Student Name:", bg="darkblue", fg="white").pack()
+    name_entry = tk.Entry(reg_window, width=30)
+    name_entry.pack(pady=5)
+
+    tk.Label(reg_window, text="Age:", bg="darkblue", fg="white").pack()
+    age_entry = tk.Entry(reg_window, width=30)
+    age_entry.pack(pady=5)
+
+    tk.Label(reg_window, text="Gender:", bg="darkblue", fg="white").pack()
+    gender_entry = tk.Entry(reg_window, width=30)
+    gender_entry.pack(pady=5)
+
+    tk.Label(reg_window, text="Class:", bg="darkblue", fg="white").pack()
+    class_entry = tk.Entry(reg_window, width=30)
+    class_entry.pack(pady=5)
+
+    tk.Label(reg_window, text="Section (Academic/Islamic):", bg="darkblue", fg="white").pack()
+    section_entry = tk.Entry(reg_window, width=30)
+    section_entry.pack(pady=5)
+
+    tk.Label(reg_window, text="Parent Name:", bg="darkblue", fg="white").pack()
+    parent_entry = tk.Entry(reg_window, width=30)
+    parent_entry.pack(pady=5)
+
+    tk.Label(reg_window, text="Parent Phone:", bg="darkblue", fg="white").pack()
+    phone_entry = tk.Entry(reg_window, width=30)
+    phone_entry.pack(pady=5)
+
+    def save_student():
+        name = name_entry.get()
+        age = age_entry.get()
+        gender = gender_entry.get()
+        class_name = class_entry.get()
+        section = section_entry.get()
+        parent_name = parent_entry.get()
+        parent_phone = phone_entry.get()
+        today = str(date.today())
+
+        cursor.execute(
+            "INSERT INTO students (name, age, gender, class_name, section, parent_name, parent_phone, date_registered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, age, gender, class_name, section, parent_name, parent_phone, today)
+        ) 
+        conn.commit()
+        messagebox.showinfo("Success", "Student Registered Successfully!")
+        reg_window.destroy()
+    tk.Button(reg_window, text="Save Student", bg="green", fg="white", font=("Arial", 12), command=save_student).pack(pady=10)
+                                                                                                                         
 # Create main window
 window = tk.Tk()
 window.title("SchoolPro Ghana")
@@ -29,7 +84,7 @@ button_frame = tk.Frame(window, bg="darkblue")
 button_frame.pack(pady=30)
 
 # Buttons
-btn_register = tk.Button(button_frame, text="Student Registration", font=("Arial", 12), width=25, bg="green", fg="white")
+btn_register = tk.Button(button_frame, text="Student Registration", font=("Arial", 12), width=25, bg="green", fg="white", command=open_registration)
 btn_register.grid(row=0, column=0, pady=10, padx=10)
 
 btn_attendance = tk.Button(button_frame, text="Attendance", font=("Arial", 12), width=25, bg="green", fg="white")
