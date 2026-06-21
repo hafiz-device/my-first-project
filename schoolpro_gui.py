@@ -397,10 +397,25 @@ def open_update_status():
         messagebox.showinfo("Success", "Student Status Updated Successfully!")
         status_window.destroy()
 
-    tk.Button(status_window, text="Update Status", bg="green", fg="white", font=("Arial", 12), command=update_status).pack(pady=10)    
+    tk.Button(status_window, text="Update Status", bg="green", fg="white", font=("Arial", 12), command=update_status).pack(pady=10)
+
+# Login credentials (simple version)
+USERNAME = "admin"
+PASSWORD = "schoolpro123"
+
+def check_login():
+    entered_user = user_entry.get()
+    entered_pass = pass_entry.get()
+
+    if entered_user == USERNAME and entered_pass == PASSWORD:
+        login_window.destroy()
+        window.deiconify()
+    else:
+        messagebox.showerror("Error", "Wrong username or password!")    
 
 # Create main window
 window = tk.Tk()
+window.withdraw()
 window.title("SchoolPro Ghana")
 window.geometry("800x600")
 window.configure(bg="darkblue")
@@ -453,6 +468,24 @@ btn_archive.grid(row=10, column=0, pady=10, padx=10)
 
 btn_exit = tk.Button(button_frame, text="Exit", font=("Arial, 12"), width=25, bg="red", fg="white", command=window.quit)
 btn_exit.grid(row=11, column=0, pady=10, padx=10)
+
+#Login window
+login_window = tk.Toplevel()
+login_window.title("SchoolPro Ghana - Login")
+login_window.geometry("400x300")
+login_window.configure(bg="darkblue")
+
+tk.Label(login_window, text="SchoolPro Ghana", font=("Arial", 18, "bold"), bg="darkblue", fg="white").pack(pady=20)
+
+tk.Label(login_window, text="Username:", bg="darkblue", fg="white").pack()
+user_entry = tk.Entry(login_window, width=25)
+user_entry.pack(pady=5)
+
+tk.Label(login_window, text="Password:", bg="darkblue", fg="white").pack()
+pass_entry = tk.Entry(login_window, width=25, show="*")
+pass_entry.pack(pady=5)
+
+tk.Button(login_window, text="Login", bg="green", fg="white", font=("Arial", 12), command=check_login).pack(pady=15)
 
 # Start the window
 window.mainloop()
