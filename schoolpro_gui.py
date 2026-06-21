@@ -424,6 +424,34 @@ window.configure(bg="darkblue")
 title = tk.Label(window, text="SchoolPro Ghana", font=("Arial", 24, "bold"), bg="darkblue", fg="white")
 title.pack(pady=20)
 
+# Dashboard - Statistics
+def get_stats():
+    cursor.execute("SELECT COUNT(*) FROM students")
+    total_students = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM teachers")
+    total_teachers = cursor.fetchone()[0]
+
+    cursor.execute("SELECT amount FROM fees")
+    all_fees = cursor.fetchall()
+    total_fees = 0
+    for fee in all_fees:
+        try:
+            total_fees += float(fee[0])
+        except:
+            pass    
+
+    return total_students, total_teachers, total_fees
+
+total_students, total_teachers, total_fees = get_stats()
+
+stats_frame = tk.Frame(window,bg="darkblue")
+stats_frame.pack(pady=10)
+
+tk.Label(stats_frame, text="Total Students: " + str(total_students), font=("Arial", 12), bg="darkblue", fg="yellow").pack()
+tk.Label(stats_frame, text="Total Teachers: " + str(total_teachers), font=("Arial", 12), bg="darkblue", fg="yellow").pack()
+tk.Label(stats_frame, text="Total Fees Collected: GHS " + str(total_fees), font=("Arial", 12), bg="darkblue", fg="yellow").pack()
+
 subtitle = tk.Label(window, text="School Management Software", font=("Arial", 14), bg="darkblue", fg="white")
 subtitle.pack()
 
