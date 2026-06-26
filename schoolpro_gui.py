@@ -6,6 +6,8 @@ import tkinter as tk
 from tkinter import messagebox
 import sqlite3 
 from datetime import date 
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
 # Connect to database 
 conn = sqlite3.connect("/home/hafiz/my-first-project/schoolpro.db")
@@ -411,7 +413,55 @@ def check_login():
         login_window.destroy()
         window.deiconify()
     else:
-        messagebox.showerror("Error", "Wrong username or password!")    
+        messagebox.showerror("Error", "Wrong username or password!")  
+
+def open_report_card():
+    report_window = tk.Toplevel(window)
+    report_window.title("Print Report Card")
+    report_window.geometry("400x250")
+    report_window.configure(bg="darkblue")
+
+    tk.Label(report_window, text="PRINT REPORT CARD", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    tk.Label(report_window, text="Student Name:", bg="darkblue", fg="white").pack()
+    name_entry = tk.Entry(report_window, width=30)
+    name_entry.pack(pady=5)
+
+    def generate_report():
+        student_name = name_entry.get()
+        cursor.execute("SELECT * FROM grades WHERE student_name = ?", (student_name,))
+        grades = cursor.fetchall()
+        print(grades)
+
+        if len(grades) == 0:
+            messagebox.showerror("Error", "No grades found for this student!")
+            return
+
+        filename = "/home/hafiz/Desktop/" + student_name + "_report_card.pdf"
+        c = canvas.Canvas(filename, pagesize=A4)
+        c.setFont("Helvetica-Bold", 18)
+        c.drawString(150, 800, "SCHOOLPRO GHANA")
+        c.setFont("Helvetica", 14)
+        c.drawString(150, 770, "STUDENT REPORT CARD")
+        c.drawString(50, 730, "Student Name:" + student_name)
+
+        y = 670
+        c.drawString(50, y, "Subject")
+        c.drawString(250, y, "Score")
+        c.drawString(400, y, "Grade")
+        y -= 30 
+
+        for grade in grades:
+            c.drawString(50, y, str(grade[3]))
+            c.drawString(250, y, str(grade[4]))
+            c.drawString(400, y, str(grade[5]))
+            y -= 30
+
+        c.save()
+        messagebox.showinfo("Success", "Report Card Generated! check your Desktop.")
+        report_window.destroy()
+
+    tk.Button(report_window, text="Generate Report Card", bg="green", fg="white", font=("Arial", 12), command=generate_report).pack(pady=15)              
 
 # Create main window
 window = tk.Tk()
@@ -494,8 +544,11 @@ btn_teachers_view.grid(row=9, column=0, pady=10, padx=10)
 btn_archive = tk.Button(button_frame, text="Update Student Status", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_update_status)
 btn_archive.grid(row=10, column=0, pady=10, padx=10)
 
+btn_report = tk.Button(button_frame, text="Print Report Card", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_report_card)
+btn_report.grid(row=11, column=0, pady=10, padx=10)
+
 btn_exit = tk.Button(button_frame, text="Exit", font=("Arial, 12"), width=25, bg="red", fg="white", command=window.quit)
-btn_exit.grid(row=11, column=0, pady=10, padx=10)
+btn_exit.grid(row=12, column=0, pady=10, padx=10)
 
 #Login window
 login_window = tk.Toplevel()
