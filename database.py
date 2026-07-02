@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connect to database
-conn = sqlite3.connect("schoolpro.db")
+conn = sqlite3.connect("/home/hafiz/my-first-project/schoolpro.db")
 cursor = conn.cursor()
 
 # Student table
@@ -15,7 +15,8 @@ cursor.execute("""
         section TEXT,
         parent_name TEXT,
         parent_phone TEXT,
-        date_registered TEXT
+        date_registered TEXT,
+        status TEXT DEFAULT 'Active'       
     )
 """)
 
@@ -40,7 +41,7 @@ cursor.execute("""
 
 # Attendace table
 cursor.execute("""
-    CREATE TABLE IF NOT EXIsTS attendace (
+    CREATE TABLE IF NOT EXIsTS attendance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         student_id INTEGER,
         student_name TEXT,
@@ -56,7 +57,8 @@ cursor.execute("""
         student_id INTEGER,
         student_name TEXT,
         subject TEXT,
-        score TEXT,
+        class_score TEXT,
+        exam_score TEXT,       
         grade TEXT,
         term TEXT,
         year TEXT

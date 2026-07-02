@@ -54,7 +54,8 @@ cursor.execute("""
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         student_name TEXT,
         subject TEXT,
-        score TEXT,
+        class_score TEXT,
+        exam_score TEXT,       
         grade TEXT,
         term TEXT,
         year TEXT 

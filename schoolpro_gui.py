@@ -8,6 +8,14 @@ import sqlite3
 from datetime import date 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import inch 
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+import os 
+import time 
 
 # Connect to database 
 conn = sqlite3.connect("/home/hafiz/my-first-project/schoolpro.db")
@@ -113,9 +121,13 @@ def open_grades():
     subject_entry = tk.Entry(grades_window, width=30)
     subject_entry.pack(pady=5)
 
-    tk.Label(grades_window, text="Score:", bg="darkblue", fg="white").pack()
-    score_entry = tk.Entry(grades_window, width=30)
-    score_entry.pack(pady=5)
+    tk.Label(grades_window, text="Class Score (out of 30):", bg="darkblue", fg="white").pack()
+    class_score_entry = tk.Entry(grades_window, width=30)
+    class_score_entry.pack(pady=5)
+
+    tk.Label(grades_window, text="Exam Score (out of 70):", bg="darkblue", fg="white").pack()
+    exam_score_entry = tk.Entry(grades_window, width=30)
+    exam_score_entry.pack(pady=5)
 
     tk.Label(grades_window, text="Grade (A/B/C/D/F):", bg="darkblue", fg="white").pack()
     grade_entry =tk.Entry(grades_window, width=30)
@@ -132,13 +144,14 @@ def open_grades():
     def save_grades():
         student_name =  name_entry.get()
         subject = subject_entry.get()
-        score = score_entry.get()
+        class_score = class_score_entry.get()
+        exam_score = exam_score_entry.get()
         grade = grade_entry.get()
         term = term_entry.get()
         year = year_entry.get()
         cursor.execute(
-            "INSERT INTO grades(student_name, subject, score, grade, term, year) VALUES (?, ?, ?, ?, ?, ?)",
-            (student_name, subject, score, grade, term, year)
+            "INSERT INTO grades(student_name, subject, class_score, exam_score, grade, term, year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (student_name, subject, class_score, exam_score, grade, term, year)
         ) 
         conn.commit()
         messagebox.showinfo("Success", "Grades Recorded Successfully!")
@@ -257,6 +270,7 @@ def open_view_students():
             text_box.insert(tk.END, "Section: " + student[5] + "\n")
             text_box.insert(tk.END, "Parent: " + student[6] + "\n")
             text_box.insert(tk.END, "Phone: " + student[7] + "\n")
+            text_box.insert(tk.END, "Date Registered: " + str(student[8]) + "\n")
             text_box.insert(tk.END, "Status: " + str(student[9]) + "\n")
             text_box.insert(tk.END, "------------------------\n")
 
@@ -290,8 +304,9 @@ def open_search():
                 text_box.insert(tk.END, "Gender: " + student[3] + "\n")
                 text_box.insert(tk.END, "Class: " + student[4] + "\n")
                 text_box.insert(tk.END, "Section: " + student[5] + "\n")
-                text_box.insert(tk.END, "Perent: " + student[6] + "\n")
+                text_box.insert(tk.END, "Parent: " + student[6] + "\n")
                 text_box.insert(tk.END, "Phone: " + student[7] + "\n")
+                text_box.insert(tk.END, "Date Registered: " + str(student[8]) + "\n")
                 text_box.insert(tk.END, "Status: " + str(student[9]) + "\n")
                 text_box.insert(tk.END, "------------------------\n")
 
@@ -316,9 +331,9 @@ def open_view_attendance():
     else:
         for record in records:
             text_box.insert(tk.END, "ID: " + str(record[0]) + "\n")
-            text_box.insert(tk.END, "Student: " + record[1] + "\n")
-            text_box.insert(tk.END, "Date: " + record[2] + "\n")
-            text_box.insert(tk.END, "Status: " + record[3] + "\n")
+            text_box.insert(tk.END, "Student: " + str(record[1]) + "\n")
+            text_box.insert(tk.END, "Date: " + str(record[2]) + "\n")
+            text_box.insert(tk.END, "Status: " + str(record[3]) + "\n")
             text_box.insert(tk.END, "--------------------------")
 
 def open_view_fees():
@@ -418,7 +433,7 @@ def check_login():
 def open_report_card():
     report_window = tk.Toplevel(window)
     report_window.title("Print Report Card")
-    report_window.geometry("400x250")
+    report_window.geometry("450x550")
     report_window.configure(bg="darkblue")
 
     tk.Label(report_window, text="PRINT REPORT CARD", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
@@ -427,42 +442,449 @@ def open_report_card():
     name_entry = tk.Entry(report_window, width=30)
     name_entry.pack(pady=5)
 
+    tk.Label(report_window, text="Class:", bg="darkblue", fg="white").pack()
+    class_entry = tk.Entry(report_window, width=30)
+    class_entry.pack(pady=3)
+
+    tk.Label(report_window, text="Position In Class:", bg="darkblue", fg="white").pack()
+    position_entry = tk.Entry(report_window, width=30)
+    position_entry.pack(pady=3)
+    
+    tk.Label(report_window, text="Class Size:", bg="darkblue", fg="white").pack()
+    class_size_entry = tk.Entry(report_window, width=30)
+    class_size_entry.pack(pady=3)
+
+    tk.Label(report_window, text="Term:", bg="darkblue", fg="white").pack()
+    term_entry = tk.Entry(report_window, width=30)
+    term_entry.pack(pady=3)
+
+    tk.Label(report_window, text="Closing Date:", bg="darkblue", fg="white").pack()
+    closing_date_entry = tk.Entry(report_window, width=30)
+    closing_date_entry.pack(pady=3)
+
+    tk.Label(report_window, text="Reporting Date:", bg="darkblue", fg="white").pack()
+    reporting_date_entry = tk.Entry(report_window, width=30)
+    reporting_date_entry.pack(pady=3)
+
+    tk.Label(report_window, text=" Attendance Present:", bg="darkblue", fg="white").pack()
+    attendance_present_entry = tk.Entry(report_window, width=30)
+    attendance_present_entry.pack(pady=3)
+
+    tk.Label(report_window, text="Attendance Total:", bg="darkblue", fg="white").pack()
+    attendance_total_entry = tk.Entry(report_window, width=30)
+    attendance_total_entry.pack(pady=3)
+
+    tk.Label(report_window, text="Conduct:", bg="darkblue", fg="white").pack()
+    conduct_entry = tk.Entry(report_window, width=30)
+    conduct_entry.pack(pady=3)
+
+    tk.Label(report_window, text="Class Teacher's Remarks:", bg="darkblue", fg="white").pack()
+    remarks_entry = tk.Entry(report_window, width=30)
+    remarks_entry.pack(pady=3)
+
+    tk.Label(report_window, text="Next Term School Fees (GHS):", bg="darkblue", fg="white").pack()
+    fees_entry = tk.Entry(report_window, width=30)
+    fees_entry.pack(pady=3)
+
     def generate_report():
         student_name = name_entry.get()
         cursor.execute("SELECT * FROM grades WHERE student_name = ?", (student_name,))
-        grades = cursor.fetchall()
-        print(grades)
+        grade_rows = cursor.fetchall()
 
-        if len(grades) == 0:
-            messagebox.showerror("Error", "No grades found for this student!")
+        if len(grade_rows) == 0:
+            messagebox.showinfo("Error", "No grades found for this student!")
             return
-
+        # Calculate total raw score automatically by adding up all subject totals
+        total_raw_score = 0
+        for grade in grade_rows:
+            total_raw_score += int(grade[4]) + int(grade[5])
         filename = "/home/hafiz/Desktop/" + student_name + "_report_card.pdf"
-        c = canvas.Canvas(filename, pagesize=A4)
-        c.setFont("Helvetica-Bold", 18)
-        c.drawString(150, 800, "SCHOOLPRO GHANA")
-        c.setFont("Helvetica", 14)
-        c.drawString(150, 770, "STUDENT REPORT CARD")
-        c.drawString(50, 730, "Student Name:" + student_name)
 
-        y = 670
-        c.drawString(50, y, "Subject")
-        c.drawString(250, y, "Score")
-        c.drawString(400, y, "Grade")
-        y -= 30 
+        doc = SimpleDocTemplate(filename, pagesize=A4,
+            leftMargin=0.5*inch, rightMargin=0.5*inch,
+            topMargin=0.5*inch, bottomMargin=0.5*inch)
+        
+        suffix = str(int(time.time()))
+        styles = getSampleStyleSheet()
 
-        for grade in grades:
-            c.drawString(50, y, str(grade[3]))
-            c.drawString(250, y, str(grade[4]))
-            c.drawString(400, y, str(grade[5]))
-            y -= 30
+        software_label_style = ParagraphStyle("SoftwareLabel" + suffix, parent=styles["Normal"],
+            fontName="Helvetica-Oblique", fontSize=9, alignment=TA_CENTER,
+            textColor=colors.gray, spaceAfter=10)
 
-        c.save()
-        messagebox.showinfo("Success", "Report Card Generated! check your Desktop.")
+        school_name_style = ParagraphStyle("SchoolName" + suffix, parent=styles["Normal"],
+            fontName="Helvetica-Bold", fontSize=16, alignment=TA_CENTER, spaceAfter=8)
+
+        subtitle_style = ParagraphStyle("Subtitle" + suffix, parent=styles["Normal"],
+            fontName="Helvetica-Bold", fontSize=12, alignment=TA_CENTER)  
+
+        info_label_style = ParagraphStyle("InfoLabel" + suffix, parent=styles["Normal"],
+            fontName="Helvetica-Bold", fontSize=10, leading=14)
+
+        info_value_style = ParagraphStyle("InfoValue" + suffix, paren=styles["Normal"],
+            fontName="Helvetica", fontSize=10, leading=14)
+
+        table_header_style = ParagraphStyle("TableHeader" + suffix, parent=styles["Normal"],
+            fontName="Helvetica-Bold", fontSize=10, alignment=TA_CENTER, textColor=colors.white)
+
+        table_cell_style = ParagraphStyle("TableCell" + suffix, parent=styles["Normal"],
+            fontName="Helvetica", fontSize=10, alignment=TA_CENTER)
+
+        table_subject_style = ParagraphStyle("TableSubject" + suffix, parent=styles["Normal"],
+            fontName="Helvetica", fontSize=10, alignment=TA_LEFT)
+
+        remarks_label_style = ParagraphStyle("RemarksLabel" + suffix, parent=styles["Normal"],
+            fontName="Helvetica-Bold", fontSize=10, spaceAfter=2, spaceBefore=8)
+        
+        remarks_value_style = ParagraphStyle("RemarksValue" + suffix, parent=styles["Normal"],
+            fontName="Helvetica", fontSize=10, leading=14)
+        
+        story = []
+
+        # SchoolPro Ghana watermark at the very top
+        story.append(Paragraph("Generated by SchoolPro Ghana", software_label_style))
+
+        # Logo space (left) + school name + subtitle
+        logo_path = "/home/hafiz/Desktop/school_logo.png"
+        if os.path.exists(logo_path):
+            logo_cell = Image(logo_path, width=0.9*inch, height=0.9*inch)
+        else:
+            logo_cell = Paragraph("[LOGO]", ParagraphStyle("LogoPlaceholder",
+                fontSize=9, alignment=TA_CENTER, textColor=colors.gray))
+
+        header_text =[
+            Paragraph("DAARIL QURAN ACADEMY &ndash; WULENSI", school_name_style),
+            Paragraph("<u>STUDENT'S TERMINAL REPORT</u>", subtitle_style)
+        ]        
+
+        header_table = Table([[logo_cell, header_text]], colWidths=[1.1*inch, 6.4*inch])
+        header_table.setStyle(TableStyle([
+            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+            ("ALIGN", (0,0), (0,0), "CENTER")
+        ]))
+        story.append(header_table)
+        story.append(Spacer(1, 0.2*inch))
+
+        # Student info grid
+        info_data = [
+            [Paragraph("Student's Name:", info_label_style), Paragraph(student_name, info_value_style),
+             Paragraph("Term:", info_label_style), Paragraph(term_entry.get(), info_value_style)],
+            [Paragraph("Class:", info_label_style), Paragraph(class_entry.get(), info_value_style),
+             Paragraph("Closing Date:", info_label_style), Paragraph(closing_date_entry.get(), info_value_style)],
+            [Paragraph("Position In Class:", info_label_style), Paragraph(position_entry.get(), info_value_style),
+             Paragraph("Reporting Date:", info_label_style), Paragraph(reporting_date_entry.get(), info_value_style)],
+            [Paragraph("Class Size:", info_label_style), Paragraph(class_size_entry.get(), info_value_style),
+             Paragraph("", info_label_style), Paragraph("", info_value_style)],  
+        ]
+        info_table = Table(info_data, colWidths=[1.5*inch, 2.0*inch, 1.5*inch, 2.0*inch])
+        info_table.setStyle(TableStyle([
+            ("VALING", (0,0), (-1,-1), "TOP"),
+            ("TOPPADDING", (0,0), (-1,-1), 3),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 3)
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 0.25*inch))
+
+        # Academic performance table
+        table_data = [[
+            Paragraph("SUBJECTS", table_header_style),
+            Paragraph("CLASS SCORE<br/>(30) MARKS", table_header_style),
+            Paragraph("EXAM SCORE<br/>(70) MARKS", table_header_style),
+            Paragraph("TOTAL MARKS<br/>SCORE", table_header_style),
+        ]]
+
+        for grade in grade_rows:
+            table_data.append([
+                Paragraph(str(grade[3]), table_subject_style),   # subject
+                Paragraph(str(grade[4]), table_cell_style),       # class_score
+                Paragraph(str(grade[5]), table_cell_style),       # exam_score
+                Paragraph(str(int(grade[4]) + int(grade[5])), table_cell_style),  # total
+            ])
+
+        perf_table = Table(table_data, colWidths=[2.5*inch, 1.6*inch, 1.6*inch, 1.3*inch], repeatRows=1)
+        perf_table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1, 0), colors.HexColor("#1F3864")),
+            ("TEXTCOLOR", (0,0), (-1, 0), colors.white),
+            ("GRID", (0,0), (-1,-1), 0.6, colors.grey),
+            ("BOX", (0,0), (-1,-1), 1, colors.black),
+            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white,colors.HexColor("#F2F2F2")]),
+            ("TOPPADDING", (0,0), (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+        ]))    
+        story.append(perf_table)
+        story.append(Spacer(1, 0.3*inch))
+
+        # Remarks section
+        story.append(Paragraph("TOTAL RAW SCORE:"+ str(total_raw_score), remarks_label_style))
+        story.append(Paragraph("ATTENDANCE: " + attendance_present_entry.get() + "out of" + attendance_total_entry.get(), remarks_value_style))
+        story.append(Paragraph("CONDUCT: " + conduct_entry.get(), remarks_value_style))
+        story.append(Paragraph("CLASS TEACHER'S REMARKS:", remarks_label_style))
+        story.append(Paragraph(remarks_entry.get(), remarks_value_style))
+        story.append(Paragraph("NEXT term school fees: GHS " + fees_entry.get(), remarks_label_style))
+        story.append(Spacer(1, 0.5*inch))
+
+        signature_table = Table([
+            ["-------------------------", ""],
+            ["Headmaster's Signature", ""],
+        ], colWidths=[3*inch, 4*inch])
+        signature_table.setStyle(TableStyle([
+            ("ALIGN", (0,0), (0,-1), "LEFT"),
+        ]))
+        story.append(signature_table)
+
+        doc.build(story)
+        messagebox.showinfo("Sucess", "Report Card Generated! Check your Desktop.")
         report_window.destroy()
 
-    tk.Button(report_window, text="Generate Report Card", bg="green", fg="white", font=("Arial", 12), command=generate_report).pack(pady=15)              
 
+    tk.Button(report_window, text="Generate Report Card", bg="green", fg="white", font=("Arial", 12), command=generate_report).pack(pady=15)
+
+def open_bulk_report_card():
+    bulk_window = tk.Toplevel(window)
+    bulk_window.title("Bulk Print Report Cards")
+    bulk_window.geometry("500x600")
+    bulk_window.configure(bg="darkblue")
+
+    tk.Label(bulk_window, text="BULK PRINT REPORT CARDS", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    tk.Label(bulk_window, text="Class:", bg="darkblue", fg="white").pack()
+    bulk_class_entry = tk.Entry(bulk_window, width=30)
+    bulk_class_entry.pack(pady=3)
+
+    tk.Label(bulk_window, text="Term:", bg="darkblue", fg="white").pack()
+    bulk_term_entry = tk.Entry(bulk_window, width=30)
+    bulk_term_entry.pack(pady=3)
+
+    tk.Label(bulk_window, text="Class Size:", bg="darkblue", fg="white").pack()
+    bulk_class_size_entry = tk.Entry(bulk_window, width=30)
+    bulk_class_size_entry.pack(pady=3)
+
+    tk.Label(bulk_window, text="Closing Date:", bg="darkblue", fg="white").pack()
+    bulk_closing_date_entry = tk.Entry(bulk_window, width=30)
+    bulk_closing_date_entry.pack(pady=3)
+
+    tk.Label(bulk_window, text="Reporting Date:", bg="darkblue", fg="white").pack()
+    bulk_reporting_date_entry = tk.Entry(bulk_window, width=30)
+    bulk_reporting_date_entry.pack(pady=3)
+
+    tk.Label(bulk_window, text="Attendance Total:", bg="darkblue", fg="white").pack()
+    bulk_attendance_total_entry = tk.Entry(bulk_window, width=30)
+    bulk_attendance_total_entry.pack(pady=3)    
+
+    tk.Label(bulk_window, text="Conduct:", bg="darkblue", fg="white").pack()
+    bulk_conduct_entry = tk.Entry(bulk_window, width=30)
+    bulk_conduct_entry.pack(pady=3)
+
+    tk.Label(bulk_window, text="Class Teacher's Remarks:", bg="darkblue", fg="white").pack()
+    bulk_remarks_entry = tk.Entry(bulk_window, width=30)
+    bulk_remarks_entry.pack(pady=3)
+
+    tk.Label(bulk_window, text="Next Term School Fees (GHS):", bg="darkblue", fg="white").pack()
+    bulk_fees_entry = tk.Entry(bulk_window, width=30)
+    bulk_fees_entry.pack(pady=3)
+
+    tk.Label(bulk_window, text="Load students for this class, then enter position + Attendance Present for each:",
+             bg="darkblue", fg="white", wraplength=400).pack(pady=10)               
+    
+    canvas = tk.Canvas(bulk_window, bg="darkblue", height=200)
+    scrollbar = tk.Scrollbar(bulk_window, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+    canvas.pack(fill="both", expand=True)
+    students_frame = tk.Frame(canvas, bg="darkblue")
+    canvas.create_window((0,0), window=students_frame, anchor="nw")
+    students_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+    student_entries = []
+
+    def load_students():
+        for widget in students_frame.winfo_children():
+            widget.destroy()
+        student_entries.clear()
+
+        class_name = bulk_class_entry.get()
+        cursor.execute("SELECT name FROM students WHERE class_name = ?AND status = 'Active'", (class_name,))
+        students = cursor.fetchall()
+
+        if len(students) == 0:
+            messagebox.showinfo("Error", "No active students found in this class!")
+            return
+
+        for student in students:
+            row = tk.Frame(students_frame, bg="darkblue")
+            row.pack(pady=2) 
+            tk.Label(row, text=student[0], width=20, bg="darkblue", fg="white", anchor="w").pack(side="left")
+            tk.Label(row, text="Position:", bg="darkblue", fg="white").pack(side="left")
+            pos_entry = tk.Entry(row, width=5)
+            pos_entry.pack(side="left", padx=3)
+            tk.Label(row, text="Present:", bg="darkblue", fg="white").pack(side="left")
+            present_entry = tk.Entry(row, width=5)
+            present_entry.pack(side="left", padx=3)
+            student_entries.append((student[0], pos_entry, present_entry))
+
+    tk.Button(bulk_window, text="Load students", bg="orange", fg="white", command=load_students).pack(pady=5)
+
+    def generate_bulk_reports():
+        class_name = bulk_class_entry.get()
+        if len(student_entries) == 0:
+            messagebox.showinfo("Error", "Loadd student first!")
+            return
+
+        success_count = 0 
+        skipped = []
+
+        for student_name, pos_entry, present_entry in student_entries:
+            cursor.execute("SELECT * FROM grades WHERE student_name = ?", (student_name,))
+            grade_rows = cursor.fetchall()
+
+            if len(grade_rows) == 0:
+                skipped.append(student_name)
+                continue
+            total_raw_score = 0
+            for grade in grade_rows:
+                total_raw_score += int(grade[4]) + int(grade[5])
+
+            filename = "/home/hafiz/Desktop/" + student_name + "_report_card_pdf"
+
+            doc = SimpleDocTemplate(filename, pagesize=A4,
+                leftMargin=0.5*inch, rightMargin=0.5*inch,
+                topMargin=0.5*inch, bottomMargin=0.5*inch)
+            
+            suffix = str(int(time.time()))
+            styles = getSampleStyleSheet()  
+
+            software_label_style = ParagraphStyle("SoftwareLabel" + suffix, parent=styles["Normal"],
+                fontName="Helvetica-Oblique", fontSize=9, alignment=TA_CENTER, 
+                textColor=colors.gray, spaceAfter=10)
+
+            school_name_style = ParagraphStyle("SchoolName" + suffix, parent=styles["Normal"],
+                fontName="Helvetica-Bold", fontSize=16, alignment=TA_CENTER, spacsAfter=8)
+
+            subtitle_style = ParagraphStyle("Subtitle" + suffix, parent=styles["Normal"],
+                fontName="Helvetica-Bold", fontSize=12, alignment=TA_CENTER)
+
+            info_label_style = ParagraphStyle("InfoLabel" + suffix, parent=styles["Normal"],
+                fontNmae="Helvetica-Bold", fontSize=10, leading=14)
+
+            info_value_style = ParagraphStyle("InfoValue" + suffix, parent=styles["Normal"],
+                fontName="Helvetica", fontSize=10, leading=14)
+
+            table_header_style = ParagraphStyle("TableHeader" + suffix, parent=styles["Normal"],
+                fontName="Helvetica-Bold", fontSize=10, alignment=TA_CENTER, textColor=colors.white)
+
+            table_cell_style = ParagraphStyle("TableCall" + suffix, parent=styles["Normal"], 
+                fontName="Helvetica", fontSize=10, alignment=TA_CENTER)
+
+            table_subject_style = ParagraphStyle("TableSubject" + suffix, parent=styles["Normal"],
+                fontName="Helvetica", fontSize=10, alignment=TA_LEFT)
+
+            remarks_label_style = ParagraphStyle("RemarksLabel" + suffix, parent=styles["Normal"],
+                fontName="Helvetica-Bold", fontSize=10, spaceAfter=2, spaceBefore=8)
+            
+            remarks_value_style = ParagraphStyle("RemarksValue" + suffix, parent=styles["Normal"],
+                fontName="Helvetica", fontSize=10, leading=14)
+            
+            story = []
+
+            story.append(Paragraph("Generated by SchoolPro Ghana", software_label_style))
+
+            logo_path = "/home/hafiz/Desktop/school_logo.png"
+            if os.path.exists(logo_path):
+                logo_cell = Image(logo_path, width=0.9*inch, height=0.9*inch)
+            else:
+                logo_cell = Paragraph("[LOGO]", ParagraphStyle("LogoPlaceholder",
+                    fontSize=9, alignment=TA_CENTER, textColor=colors.gray))
+
+            header_text =[
+                Paragraph("DAARIL QURAN ACADEMY &ndash; WULENSI", school_name_style),
+                Spacer(1, 0.1*inch),
+                Paragraph("<u>STUDENT'S TERMINAL REPORT</u>", subtitle_style)
+            ]        
+
+            header_table = Table([[logo_cell, header_text]], colWidths=[1.1*inch, 6.4*inch])
+            header_table.setStyle(TableStyle([
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+                ("ALIGN", (0,0), (0,0), "CENTER")
+            ]))
+            story.append(header_table)
+            story.append(Spacer(1, 0.2*inch))
+
+            info_data = [
+                [Paragraph("Student's Name:", info_label_style), Paragraph(student_name, info_value_style),
+                 Paragraph("Term:", info_label_style), Paragraph(bulk_term_entry.get(), info_value_style)],
+                [Paragraph("Class:", info_label_style), Paragraph(class_name, info_value_style),
+                 Paragraph("Closing Date:", info_label_style), Paragraph(bulk_closing_date_entry.get(), info_value_style)],
+                [Paragraph("Position In Class:", info_label_style), Paragraph(pos_entry.get(), info_value_style),
+                 Paragraph("Reporting Date:", info_label_style), Paragraph(bulk_reporting_date_entry.get(), info_value_style)],
+                [Paragraph("Class Size:", info_label_style), Paragraph(bulk_class_size_entry.get(), info_value_style),
+                 Paragraph("", info_label_style), Paragraph("", info_value_style)],  
+            ]
+            info_table = Table(info_data, colWidths=[1.5*inch, 2.0*inch, 1.5*inch, 2.0*inch])
+            info_table.setStyle(TableStyle([
+                ("VALING", (0,0), (-1,-1), "TOP"),
+                ("TOPPADDING", (0,0), (-1,-1), 3),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 3)
+            ]))
+            story.append(info_table)
+            story.append(Spacer(1, 0.25*inch))
+
+            table_data = [[
+                Paragraph("SUBJECTS", table_header_style),
+                Paragraph("CLASS SCORE<br/>(30) MARKS", table_header_style),
+                Paragraph("EXAM SCORE<br/>(70) MARKS", table_header_style),
+                Paragraph("TOTAL MARKS<br/>SCORE", table_header_style),
+            ]]
+
+            for grade in grade_rows:
+                table_data.append([
+                    Paragraph(str(grade[3]), table_subject_style),   
+                    Paragraph(str(grade[4]), table_cell_style),       
+                    Paragraph(str(grade[5]), table_cell_style),       
+                    Paragraph(str(int(grade[4]) + int(grade[5])), table_cell_style),  
+                ])
+
+            perf_table = Table(table_data, colWidths=[2.5*inch, 1.6*inch, 1.6*inch, 1.3*inch], repeatRows=1)
+            perf_table.setStyle(TableStyle([
+                ("BACKGROUND", (0,0), (-1, 0), colors.HexColor("#1F3864")),
+                ("TEXTCOLOR", (0,0), (-1, 0), colors.white),
+                ("GRID", (0,0), (-1,-1), 0.6, colors.grey),
+                ("BOX", (0,0), (-1,-1), 1, colors.black),
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+                ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white,colors.HexColor("#F2F2F2")]),
+                ("TOPPADDING", (0,0), (-1,-1), 6),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+            ]))    
+            story.append(perf_table)
+            story.append(Spacer(1, 0.3*inch))
+
+            story.append(Paragraph("TOTAL RAW SCORE:"+ str(total_raw_score), remarks_label_style))
+            story.append(Paragraph("ATTENDANCE: " + present_entry.get() + "out of" + bulk_attendance_total_entry.get(), remarks_value_style))
+            story.append(Paragraph("CONDUCT: " +bulk_conduct_entry.get(), remarks_value_style))
+            story.append(Paragraph("CLASS TEACHER'S REMARKS:", remarks_label_style))
+            story.append(Paragraph(bulk_remarks_entry.get(), remarks_value_style))
+            story.append(Paragraph("NEXT term school fees: GHS " + bulk_fees_entry.get(), remarks_label_style))
+            story.append(Spacer(1, 0.5*inch))
+
+            signature_table = Table([
+                ["-------------------------", ""],
+                ["Headmaster's Signature", ""],
+            ], colWidths=[3*inch, 4*inch])
+            signature_table.setStyle(TableStyle([
+                ("ALIGN", (0,0), (0,-1), "LEFT"),
+            ]))
+            story.append(signature_table)
+
+            doc.build(story)
+            success_count += 1
+
+        msg = f"Denerated {success_count} reportcard(s) on your Desktop."
+        if skipped:
+            msg += "\n\nSkipped (no grades found): " + ", ".join(skipped)
+        messagebox.showinfo("Bulk Generation Complete", msg)
+        bulk_window.destroy()
+
+    tk.Button(bulk_window, text="Generate All Report Cards", bg="green", fg="white",
+              font=("Arial", 12), command=generate_bulk_reports).pack(pady=15)    
 # Create main window
 window = tk.Tk()
 window.withdraw()
@@ -511,44 +933,47 @@ button_frame.pack(pady=30)
 
 # Buttons
 btn_register = tk.Button(button_frame, text="Student Registration", font=("Arial", 12), width=25, bg="green", fg="white", command=open_registration)
-btn_register.grid(row=0, column=0, pady=10, padx=10)
+btn_register.grid(row=0, column=0, pady=4, padx=4)
 
 btn_attendance = tk.Button(button_frame, text="Attendance", font=("Arial", 12), width=25, bg="green", fg="white", command=open_attendance)
-btn_attendance.grid(row=1, column=0, pady=10, padx=10)
+btn_attendance.grid(row=1, column=0, pady=4, padx=4)
 
 btn_grades = tk.Button(button_frame, text="Grades & Results", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_grades)
-btn_grades.grid(row=2, column=0, pady=10, padx=10)
+btn_grades.grid(row=2, column=0, pady=4, padx=4)
 
 btn_fees = tk.Button(button_frame, text="Fee Management", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_fees)
-btn_fees.grid(row=3, column=0, pady=10, padx=10)
+btn_fees.grid(row=3, column=0, pady=4, padx=4)
 
 btn_teachers = tk.Button(button_frame, text="Teacher Management", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_teachers)
-btn_teachers.grid(row=4, column=0, pady=10, padx=10)
+btn_teachers.grid(row=4, column=0, pady=4, padx=4)
 
 btn_View_students = tk.Button(button_frame, text="View All Students", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_students)
-btn_View_students.grid(row=5, column=0, pady=10, padx=10)
+btn_View_students.grid(row=5, column=0, pady=4, padx=4)
 
 btn_search = tk.Button(button_frame, text="Search Student", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_search)
-btn_search.grid(row=6, column=0, pady=10, padx=10)
+btn_search.grid(row=6, column=0, pady=4, padx=4)
 
 
 btn_attendance_view = tk.Button(button_frame, text="View Attendance", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_attendance)
-btn_attendance_view.grid(row=7, column=0, pady=10, padx=10)
+btn_attendance_view.grid(row=7, column=0, pady=4, padx=4)
 
 btn_fees_view = tk.Button(button_frame, text="View Fees", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_fees)
-btn_fees_view.grid(row=8, column=0, pady=10, padx=10)
+btn_fees_view.grid(row=8, column=0, pady=4, padx=4)
 
 btn_teachers_view = tk.Button(button_frame, text="View Teachers", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_teachers)
-btn_teachers_view.grid(row=9, column=0, pady=10, padx=10)
+btn_teachers_view.grid(row=9, column=0, pady=4, padx=4)
 
 btn_archive = tk.Button(button_frame, text="Update Student Status", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_update_status)
-btn_archive.grid(row=10, column=0, pady=10, padx=10)
+btn_archive.grid(row=10, column=0, pady=4, padx=4)
 
 btn_report = tk.Button(button_frame, text="Print Report Card", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_report_card)
-btn_report.grid(row=11, column=0, pady=10, padx=10)
+btn_report.grid(row=11, column=0, pady=4, padx=4)
+
+btn_bulk = tk.Button(button_frame, text="Bulk Print Report Cards", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_bulk_report_card)
+btn_bulk.grid(row=12, column=0, pady=4, padx=4)
 
 btn_exit = tk.Button(button_frame, text="Exit", font=("Arial, 12"), width=25, bg="red", fg="white", command=window.quit)
-btn_exit.grid(row=12, column=0, pady=10, padx=10)
+btn_exit.grid(row=13, column=0, pady=4, padx=4)
 
 #Login window
 login_window = tk.Toplevel()
