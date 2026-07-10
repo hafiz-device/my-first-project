@@ -21,6 +21,11 @@ import time
 conn = sqlite3.connect("/home/hafiz/my-first-project/schoolpro.db")
 cursor = conn.cursor()
 
+def get_setting(key):
+    cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+    result = cursor.fetchone()
+    return result[0] if result else ""
+
 def open_registration():
     reg_window = tk.Toplevel(window)
     reg_window.title("Student Registration")
@@ -884,7 +889,48 @@ def open_bulk_report_card():
         bulk_window.destroy()
 
     tk.Button(bulk_window, text="Generate All Report Cards", bg="green", fg="white",
-              font=("Arial", 12), command=generate_bulk_reports).pack(pady=15)    
+              font=("Arial", 12), command=generate_bulk_reports).pack(pady=15)
+
+def open_settings():
+    settings_window = tk.Toplevel(window)
+    settings_window.title("Settings")
+    settings_window.geometry("450x550")
+    settings_window.configure(bg="darkblue")
+
+    tk.Label(settings_window, text="SETTINGS", font=("Arial", 16, "bold"),
+             bg="darkblue", fg="white").pack(pady=10)
+
+    fields = {}
+
+    labels = [
+        ("school_name", "School Name:"),
+        ("school_address", "School Address:"),
+        ("currency", "Currency (e.g. GHS):"),
+        ("house_name", "House Names (comma-separated):"),
+        ("grade_A", "Minimum Score for A:"),
+        ("grade_B", "Minimum Score for B:"),
+        ("grade_C", "Minimum Score for C:"),
+        ("grade_D", "Minimum Score for D:"),
+    ]                           
+
+    for key, label in labels:
+        tk.Label(settings_window, text=label, bg="darkblue", fg="white").pack()
+        entry = tk.Entry(settings_window, width=35)
+        entry.insert(0, get_setting(key))
+        entry.pack(pady=3)
+        fields[key] = entry
+
+    def save_settings():
+        for key, entry in fields.items():
+            cursor.execute("UPDATE settings SET value = ? WHERE key = ?",
+                           (entry.get(), key))
+        conn.commit()
+        messagebox.showinfo("Success", "Settings saved successfully!")
+        settings_window.destroy()
+
+    tk.Button(settings_window, text="Save Settings", bg="green", fg="white", 
+              font=("Arial", 12), command=save_settings).pack(pady=15)
+                
 # Create main window
 window = tk.Tk()
 window.withdraw()
@@ -972,8 +1018,11 @@ btn_report.grid(row=11, column=0, pady=4, padx=4)
 btn_bulk = tk.Button(button_frame, text="Bulk Print Report Cards", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_bulk_report_card)
 btn_bulk.grid(row=12, column=0, pady=4, padx=4)
 
+btn_settings = tk.Button(button_frame, text="Settings", font=("Arial, 12"), width=25, bg="gray", fg="white", command=open_settings)
+btn_settings.grid(row=13, column=0, pady=4, padx=10)
+
 btn_exit = tk.Button(button_frame, text="Exit", font=("Arial, 12"), width=25, bg="red", fg="white", command=window.quit)
-btn_exit.grid(row=13, column=0, pady=4, padx=4)
+btn_exit.grid(row=14, column=0, pady=4, padx=4)
 
 #Login window
 login_window = tk.Toplevel()

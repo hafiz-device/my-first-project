@@ -90,6 +90,31 @@ cursor.execute("""
     )
 """)
 
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS settings(
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )           
+''')
+
+# Default values
+defaults = [
+    ('school_name', 'SCHOOL NAME'),
+    ('school_address', ''),
+    ('logo_path', ''),
+    ('currency', 'GHS'),
+    ('house_name', 'Red,Blue,Green,Yellow'),
+    ('grade_A', '80'),
+    ('grade_B', '70'),
+    ('grade_C', '60'),
+    ('grade_D', '50'),
+    ('password', 'schoolpro123'),
+    ('theme', 'dark'),
+]                     
+for key, val in defaults:
+    cursor.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)",(key, val))
+
+
 conn.commit()
 print("Schoolpro Ghana Database Created Successfully!")
 print("Tables: students, student_archive, attendace, grades, fees, teachers")                                              
