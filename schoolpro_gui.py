@@ -422,14 +422,11 @@ def open_update_status():
     tk.Button(status_window, text="Update Status", bg="green", fg="white", font=("Arial", 12), command=update_status).pack(pady=10)
 
 # Login credentials (simple version)
-USERNAME = "admin"
-PASSWORD = "schoolpro123"
-
 def check_login():
     entered_user = user_entry.get()
     entered_pass = pass_entry.get()
 
-    if entered_user == USERNAME and entered_pass == PASSWORD:
+    if entered_user == "admin" and entered_pass == get_setting('password'):
         login_window.destroy()
         window.deiconify()
     else:
@@ -930,7 +927,39 @@ def open_settings():
 
     tk.Button(settings_window, text="Save Settings", bg="green", fg="white", 
               font=("Arial", 12), command=save_settings).pack(pady=15)
-                
+    
+    tk.Label(settings_window, text="---- Change Password ----", bg="darkblue", fg="white").pack(pady=5)
+
+    tk.Label(settings_window, text="Old Password:", bg="darkblue", fg="white").pack()
+    old_pass_entry = tk.Entry(settings_window, width=35, show="*")
+    old_pass_entry.pack(pady=3)
+
+    tk.Label(settings_window, text="New Password:", bg="darkblue", fg="white").pack()
+    new_pass_entry = tk.Entry(settings_window, width=35, show="*")
+    new_pass_entry.pack(pady=3)
+
+    tk.Label(settings_window, text="Confirm New Password:", bg="darkblue", fg="white").pack()
+    confirm_pass_entry = tk.Entry(settings_window, width=35, show="*")
+    confirm_pass_entry.pack(pady=3)
+
+    def change_password(): 
+        old_pw = old_pass_entry.get()
+        new_pw = new_pass_entry.get()
+        confirm_pw = confirm_pass_entry.get()
+        if old_pw != get_setting('password'):
+            messagebox.showerror("Error", "old password is incorrect!")
+            return
+        if new_pw == "":
+            messagebox.showerror("Error", "New password cannot be empty!")
+            return
+        if new_pw != confirm_pw:
+            messagebox.showerror("Error", "New passwords do not match!")
+            return
+        cursor.execute("UPDATE settings SET value = ? WHERE key ='password'", (new_pw,))
+        conn.commit()
+        messagebox.showinfo("Success", "Password changed successfully!")
+
+    tk.Button(settings_window, text="Change Password", bg="orange", fg="white", font=("Arial", 12), command=change_password).pack(pady=10)    
 # Create main window
 window = tk.Tk()
 window.withdraw()
