@@ -959,7 +959,18 @@ def open_settings():
         conn.commit()
         messagebox.showinfo("Success", "Password changed successfully!")
 
-    tk.Button(settings_window, text="Change Password", bg="orange", fg="white", font=("Arial", 12), command=change_password).pack(pady=10)    
+    tk.Button(settings_window, text="Change Password", bg="orange", fg="white", font=("Arial", 12), command=change_password).pack(pady=10)
+
+def backup_database():
+    import shutil
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schoolpro.db")
+    dst = os.path.join(os.path.expanduser("~"), "Desktop", "schoolpro_backup_" + timestamp + ".db")
+    shutil.copy2(src, dst)
+    messagebox.showinfo("Backup Complete",
+        "Database backed up to Desktop as:\nschoolpro_backup_" + timestamp + ".db")
+            
 # Create main window
 window = tk.Tk()
 window.withdraw()
@@ -1050,8 +1061,11 @@ btn_bulk.grid(row=12, column=0, pady=4, padx=4)
 btn_settings = tk.Button(button_frame, text="Settings", font=("Arial, 12"), width=25, bg="gray", fg="white", command=open_settings)
 btn_settings.grid(row=13, column=0, pady=4, padx=10)
 
+btn_backup = tk.Button(button_frame, text="Backup Database", font=("Arial", 12), width=25, bg="teal", fg="white", command=backup_database)
+btn_backup.grid(row=14, column=0, pady=4, padx=10)
+
 btn_exit = tk.Button(button_frame, text="Exit", font=("Arial, 12"), width=25, bg="red", fg="white", command=window.quit)
-btn_exit.grid(row=14, column=0, pady=4, padx=4)
+btn_exit.grid(row=15, column=0, pady=4, padx=4)
 
 #Login window
 login_window = tk.Toplevel()
