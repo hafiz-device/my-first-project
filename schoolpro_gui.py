@@ -343,35 +343,67 @@ def open_teachers():
 def open_view_students():
     view_window = tk.Toplevel(window)
     view_window.title("All Students")
-    view_window.geometry("600x400")
+    view_window.geometry("600x450")
     view_window.configure(bg="darkblue")
 
     tk.Label(view_window, text="ALL STUDENTS", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
 
     # Text box to display students
+    filter_frame = tk.Frame(view_window, bg="darkblue")
+    filter_frame.pack()
+
+    tk.Label(filter_frame, text="Filter by Section:", bg="darkblue", fg="white").pack(side="left", padx=5)
+    section_var = tk.StringVar(value="All")
+    section_dropdown = tk.OptionMenu(filter_frame, section_var, "All", "Academic", "Islamic")
+    section_dropdown.pack(side="left", padx=5)
+
+    tk.Label(filter_frame, text="Filter by House:", bg="darkblue", fg="white").pack(side="left", padx=5)
+    house_var = tk.StringVar(value="All")
+    house_options = ["All"] + get_setting('house_name').split(',')
+    house_dropdown = tk.OptionMenu(filter_frame, house_var, *house_options)
+    house_dropdown.pack(side="left", padx=5)
+
+    tk.Button(filter_frame, text="Filter", bg="orange", fg="white", command=lambda: show_students()).pack(side="left", padx=5)
+
     text_box = tk.Text(view_window, width=70, height=20)
     text_box.pack(pady=10)
 
-    cursor.execute("SELECT * FROM students")
-    students = cursor.fetchall()
+    def show_students():
+        text_box.delete(1.0, tk.END)
+        section = section_var.get()
+        house = house_var.get()
 
-    if len(students) == 0:
-        text_box.insert(tk.END, "No students registered yet!")
-    else: 
-        for student in students:
-            text_box.insert(tk.END, "ID: " + str(student[0]) + "\n")
-            text_box.insert(tk.END, "Name: " + student[1] + "\n")
-            text_box.insert(tk.END, "Age: " + student[2] + "\n")
-            text_box.insert(tk.END, "Gender: " + student[3] + "\n")
-            text_box.insert(tk.END, "Class: " + student[4] + "\n")
-            text_box.insert(tk.END, "Section: " + student[5] + "\n")
-            text_box.insert(tk.END, "Parent: " + student[6] + "\n")
-            text_box.insert(tk.END, "Phone: " + student[7] + "\n")
-            text_box.insert(tk.END, "Date Registered: " + str(student[8]) + "\n")
-            text_box.insert(tk.END, "Status: " + str(student[9]) + "\n")
-            text_box.insert(tk.END, "Student ID: " + str(student[10]) + "\n")
-            text_box.insert(tk.END, "House: " + str(student[11]) + "\n")
-            text_box.insert(tk.END, "------------------------\n")
+        if section == "All" and house == "All":
+            cursor.execute("SELECT * FROM students")
+        elif section == "All":
+            cursor.execute("SELECT * FROM students WHERE house=?", (house,))
+        elif house == "All":
+            cursor.execute("SELECT * FROM students WHRE UPPER(section)=UPPER(?)", (section,))   
+        else:
+            cursor.execute("SELECT * FROM students WHERE UPPER(section)=UPPER(?) AND UPPER(house)=UPPER(?)",
+                           (section, house))
+
+        students = cursor.fetchall()            
+
+        if len(students) == 0:
+            text_box.insert(tk.END, "No students found!")
+        else: 
+            for student in students:
+                text_box.insert(tk.END, "ID: " + str(student[0]) + "\n")
+                text_box.insert(tk.END, "Name: " + student[1] + "\n")
+                text_box.insert(tk.END, "Age: " + student[2] + "\n")
+                text_box.insert(tk.END, "Gender: " + student[3] + "\n")
+                text_box.insert(tk.END, "Class: " + student[4] + "\n")
+                text_box.insert(tk.END, "Section: " + student[5] + "\n")
+                text_box.insert(tk.END, "Parent: " + student[6] + "\n")
+                text_box.insert(tk.END, "Phone: " + student[7] + "\n")
+                text_box.insert(tk.END, "Date Registered: " + str(student[8]) + "\n")
+                text_box.insert(tk.END, "Status: " + str(student[9]) + "\n")
+                text_box.insert(tk.END, "Student ID: " + str(student[10]) + "\n")
+                text_box.insert(tk.END, "House: " + str(student[11]) + "\n")
+                text_box.insert(tk.END, "------------------------\n")
+
+    show_students()        
 
 def open_search():
     search_window = tk.Toplevel(window)
