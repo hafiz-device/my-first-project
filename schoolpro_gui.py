@@ -26,6 +26,25 @@ def get_setting(key):
     result = cursor.fetchone()
     return result[0] if result else ""
 
+def get_grade(total_score):
+    try:
+        grade_A = int(get_setting('grade_A'))
+        grade_B = int(get_setting('grade_B'))
+        grade_C = int(get_setting('grade_C'))
+        grade_D = int(get_setting('grade_D'))
+        if total_score >= grade_A:
+            return 'A'
+        elif total_score >= grade_B:
+            return 'B'
+        elif total_score >= grade_C:
+            return 'C'
+        elif total_score >= grade_D:
+            return 'D'
+        else:
+            return 'F'
+    except:
+        return 'N/A'    
+
 def open_registration():
     reg_window = tk.Toplevel(window)
     reg_window.title("Student Registration")
@@ -650,17 +669,21 @@ def open_report_card():
             Paragraph("CLASS SCORE<br/>(30) MARKS", table_header_style),
             Paragraph("EXAM SCORE<br/>(70) MARKS", table_header_style),
             Paragraph("TOTAL MARKS<br/>SCORE", table_header_style),
+            Paragraph("GRADE", table_header_style),
         ]]
 
         for grade in grade_rows:
+            total = int(grade[4]) + int(grade[5])
+            letter = get_grade(total)
             table_data.append([
                 Paragraph(str(grade[3]), table_subject_style),   # subject
                 Paragraph(str(grade[4]), table_cell_style),       # class_score
                 Paragraph(str(grade[5]), table_cell_style),       # exam_score
-                Paragraph(str(int(grade[4]) + int(grade[5])), table_cell_style),  # total
+                Paragraph(str(total), table_cell_style),  # total
+                Paragraph(letter, table_cell_style),
             ])
 
-        perf_table = Table(table_data, colWidths=[2.5*inch, 1.6*inch, 1.6*inch, 1.3*inch], repeatRows=1)
+        perf_table = Table(table_data, colWidths=[2.0*inch, 1.3*inch, 1.3*inch, 1.2*inch, 0.9*inch], repeatRows=1)
         perf_table.setStyle(TableStyle([
             ("BACKGROUND", (0,0), (-1, 0), colors.HexColor("#1F3864")),
             ("TEXTCOLOR", (0,0), (-1, 0), colors.white),
@@ -893,17 +916,21 @@ def open_bulk_report_card():
                 Paragraph("CLASS SCORE<br/>(30) MARKS", table_header_style),
                 Paragraph("EXAM SCORE<br/>(70) MARKS", table_header_style),
                 Paragraph("TOTAL MARKS<br/>SCORE", table_header_style),
+                Paragraph("GRADE", table_header_style),
             ]]
 
             for grade in grade_rows:
+                total = int(grade[4]) + int(grade[5])
+                letter = get_grade(total)
                 table_data.append([
                     Paragraph(str(grade[3]), table_subject_style),   
                     Paragraph(str(grade[4]), table_cell_style),       
                     Paragraph(str(grade[5]), table_cell_style),       
-                    Paragraph(str(int(grade[4]) + int(grade[5])), table_cell_style),  
+                    Paragraph(str(total), table_cell_style),
+                    Paragraph(letter, table_cell_style),  
                 ])
 
-            perf_table = Table(table_data, colWidths=[2.5*inch, 1.6*inch, 1.6*inch, 1.3*inch], repeatRows=1)
+            perf_table = Table(table_data, colWidths=[2.0*inch, 1.3*inch, 1.3*inch, 1.2*inch, 0.9*inch], repeatRows=1)
             perf_table.setStyle(TableStyle([
                 ("BACKGROUND", (0,0), (-1, 0), colors.HexColor("#1F3864")),
                 ("TEXTCOLOR", (0,0), (-1, 0), colors.white),
