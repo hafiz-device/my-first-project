@@ -43,7 +43,14 @@ def get_grade(total_score):
         else:
             return 'F'
     except:
-        return 'N/A'    
+        return 'N/A'   
+
+def generate_student_id():
+    from datetime import datetime
+    year = datetime.now().year
+    cursor.execute("SELECT COUNT(*) FROM students")
+    count = cursor.fetchone()[0] + 1
+    return f"SPG-{year}-{count:05d}"         
 
 def open_registration():
     reg_window = tk.Toplevel(window)
@@ -91,9 +98,10 @@ def open_registration():
         parent_phone = phone_entry.get()
         today = str(date.today())
 
+        student_code = generate_student_id()
         cursor.execute(
-            "INSERT INTO students (name, age, gender, class_name, section, parent_name, parent_phone, date_registered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, age, gender, class_name, section, parent_name, parent_phone, today)
+            "INSERT INTO students (name, age, gender, class_name, section, parent_name, parent_phone, date_registered, student_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, age, gender, class_name, section, parent_name, parent_phone, today, student_code)
         ) 
         conn.commit()
         messagebox.showinfo("Success", "Student Registered Successfully!")
@@ -354,6 +362,7 @@ def open_view_students():
             text_box.insert(tk.END, "Phone: " + student[7] + "\n")
             text_box.insert(tk.END, "Date Registered: " + str(student[8]) + "\n")
             text_box.insert(tk.END, "Status: " + str(student[9]) + "\n")
+            text_box.insert(tk.END, "Student ID:" + str(student[10]) + "\n")
             text_box.insert(tk.END, "------------------------\n")
 
 def open_search():
