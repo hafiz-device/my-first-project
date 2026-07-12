@@ -84,32 +84,90 @@ def open_registration():
 def open_attendance():
     att_window = tk.Toplevel(window)
     att_window.title("Attendance")
-    att_window.geometry("400x300")
+    att_window.geometry("500x600")
     att_window.configure(bg="darkblue")
 
     tk.Label(att_window, text="ATTENDANCE", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
 
-    tk.Label(att_window, text="Student Name:", bg="darkblue", fg="white").pack()
-    name_entry = tk.Entry(att_window, width=30)
-    name_entry.pack(pady=5)
+    tk.Label(att_window, text="Select Class:", bg="darkblue", fg="white").pack()
+    cursor.execute("SELECT DISTINCT class_name FROM students WHERE status='Active'")
+    classes = [row[0] for row in cursor.fetchall()]
+    class_var = tk.StringVar()
+    class_dropdown = tk.OptionMenu(att_window, class_var, *classes)
+    class_dropdown.pack(pady=5)
 
-    tk.Label(att_window, text="Status (Present/Absent):", bg="darkblue", fg="white").pack()
-    status_entry = tk.Entry(att_window, width=30)
-    status_entry.pack(pady=5)
+    tk.Label(att_window, text="Date:", bg="darkblue", fg="white").pack()
+    date_entry = tk.Entry(att_window, width=30)
+    date_entry.insert(0, str(date.today()))
+    date_entry.pack(pady=5)
+
+    student_entries = []
+
+    canvas = tk.Canvas(att_window, bg="darkblue", height=250)
+    scrollbar = tk.Scrollbar(att_window, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+    canvas.pack(fill="both", expand=True)
+    students_frame = tk.Frame(canvas, bg="darkblue")
+    canvas.create_window((0,0), window=students_frame, anchor="nw")
+    students_frame.bind("<Configure>", lambda e: canvas.configure(
+        scrollregion=canvas.bbox("all")))
+
+    def load_students():
+        for widget in students_frame.winfo_children():
+            widget.destroy()
+        student_entries.clear()
+
+        selected_class = class_var.get()
+        if not selected_class:
+            messagebox.showinfo("Error", "Please select a class!")
+            return
+
+        cursor.execute(
+            "SELECT name FROM students WHERE class_name=? AND status='Active'",
+            (selected_class,))
+        students = cursor.fetchall()
+
+        if len(students) == 0:
+            messagebox.showinfo("Error", "No active students found in this class!")
+            return
+
+        for student in students:
+            row = tk.Frame(students_frame, bg="darkblue")
+            row.pack(pady=3, fill="x", padx=10)
+            tk.Label(row, text=student[0], width=20, bg="darkblue",
+                     fg="white", anchor="w").pack(side="left")
+            status_var = tk.StringVar(value="Present")
+            btn = tk.Button(row, text="Present", bg="green", fg="white",width=10)
+            def make_toggle(v, b):
+                def toggle():
+                    if v.get() == "Present":
+                        v.set("Absent")
+                        b.config(text="Absent", bg="red")
+                    else:
+                        v.set("Present")
+                        b.config(text="Present", bg="green")
+                return toggle
+            btn.config(command=make_toggle(status_var, btn))
+            btn.pack(side="left", padx=5)
+            student_entries.append((student[0], status_var))
+
+    tk.Button(att_window, text="Load Students", bg="orange", fg="white", font=("Arial", 11), command=load_students).pack(pady=5)
 
     def save_attendance():
-        student_name = name_entry.get()
-        status = status_entry.get()
-        today = str(date.today())
-        cursor.execute(
-            "INSERT INTO attendance (student_name, date, status) VALUES (?, ?, ?)",
-            (student_name, today, status)
-        ) 
+        if len(student_entries) == 0:
+            messagebox.showinfo("Error", "Load students first!")
+            return
+        today = date_entry.get()
+        for student_name, status_var in student_entries:
+            cursor.execute(
+                "INSERT INTO attendance (student_name, date, status) VALUES (?, ?, ?)",
+                (student_name, today, status_var.get()))                    
         conn.commit()
-        messagebox.showinfo("Success", "Attendance Recorded Successfully!")
+        messagebox.showinfo("Success", "Attendance saved for all students!")
         att_window.destroy()
 
-    tk.Button(att_window, text="Save Attendance", bg="green", fg="white", font=("Arial", 12), command=save_attendance).pack(pady=10)
+    tk.Button(att_window, text="Save All Attendance", bg="green", fg="white", font=("Arial", 12), command=save_attendance).pack(pady=10)
 def open_grades():
     grades_window = tk.Toplevel(window)
     grades_window.title("Grades & Results")
@@ -336,9 +394,9 @@ def open_view_attendance():
     else:
         for record in records:
             text_box.insert(tk.END, "ID: " + str(record[0]) + "\n")
-            text_box.insert(tk.END, "Student: " + str(record[1]) + "\n")
-            text_box.insert(tk.END, "Date: " + str(record[2]) + "\n")
-            text_box.insert(tk.END, "Status: " + str(record[3]) + "\n")
+            text_box.insert(tk.END, "Student: " + str(record[2]) + "\n")
+            text_box.insert(tk.END, "Date: " + str(record[3]) + "\n")
+            text_box.insert(tk.END, "Status: " + str(record[4]) + "\n")
             text_box.insert(tk.END, "--------------------------")
 
 def open_view_fees():
