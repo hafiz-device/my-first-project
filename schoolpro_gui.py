@@ -80,6 +80,12 @@ def open_registration():
     section_entry = tk.Entry(reg_window, width=30)
     section_entry.pack(pady=5)
 
+    tk.Label(reg_window, text="House:", bg="darkblue", fg="white").pack()
+    house_names = get_setting('house_name').split(',')
+    house_var = tk.StringVar(value=house_names[0])
+    house_dropdown = tk.OptionMenu(reg_window, house_var, *house_names)
+    house_dropdown.pack(pady=5)
+
     tk.Label(reg_window, text="Parent Name:", bg="darkblue", fg="white").pack()
     parent_entry = tk.Entry(reg_window, width=30)
     parent_entry.pack(pady=5)
@@ -98,10 +104,11 @@ def open_registration():
         parent_phone = phone_entry.get()
         today = str(date.today())
 
+        house = house_var.get()
         student_code = generate_student_id()
         cursor.execute(
-            "INSERT INTO students (name, age, gender, class_name, section, parent_name, parent_phone, date_registered, student_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, age, gender, class_name, section, parent_name, parent_phone, today, student_code)
+            "INSERT INTO students (name, age, gender, class_name, section, house, parent_name, parent_phone, date_registered, student_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, age, gender, class_name, section, house, parent_name, parent_phone, today, student_code)
         ) 
         conn.commit()
         messagebox.showinfo("Success", "Student Registered Successfully!")
@@ -362,7 +369,8 @@ def open_view_students():
             text_box.insert(tk.END, "Phone: " + student[7] + "\n")
             text_box.insert(tk.END, "Date Registered: " + str(student[8]) + "\n")
             text_box.insert(tk.END, "Status: " + str(student[9]) + "\n")
-            text_box.insert(tk.END, "Student ID:" + str(student[10]) + "\n")
+            text_box.insert(tk.END, "Student ID: " + str(student[10]) + "\n")
+            text_box.insert(tk.END, "House: " + str(student[11]) + "\n")
             text_box.insert(tk.END, "------------------------\n")
 
 def open_search():
