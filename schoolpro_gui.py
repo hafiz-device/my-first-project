@@ -259,42 +259,112 @@ def open_grades():
 def open_fees():
     fee_window = tk.Toplevel(window)
     fee_window.title("Fee Management")
-    fee_window.geometry("400x350")
+    fee_window.geometry("550x650")
     fee_window.configure(bg="darkblue")
 
     tk.Label(fee_window, text="FEE MANAGEMET", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
 
-    tk.Label(fee_window, text="Student Name:", bg="darkblue", fg="white").pack()
-    name_entry = tk.Entry(fee_window, width=30)
-    name_entry.pack(pady=5)
+    top_frame = tk.Frame(fee_window, bg="darkblue")
+    top_frame.pack(pady=5)
 
-    tk.Label(fee_window, text="Amount Paid (GHS):", bg="darkblue", fg="white").pack()
-    amount_entry = tk.Entry(fee_window, width=30)
-    amount_entry.pack(pady=5)
+    tk.Label(top_frame, text="Class:", bg="darkblue", fg="white").pack(side="left", padx=5)
+    cursor.execute("SELECT DISTINCT class_name FROM students WHERE status='Active'")
+    classes = [row[0] for row in cursor.fetchall()]
+    class_var = tk.StringVar()
+    class_dropdown = tk.OptionMenu(top_frame, class_var, *classes)
+    class_dropdown.pack(side="left", padx=5)
 
-    tk.Label(fee_window, text="Term (1/2/3):", bg="darkblue", fg="white").pack()
-    term_entry = tk.Entry(fee_window, width=30)
-    term_entry.pack(pady=5) 
+    tk.Label(top_frame, text="Term:", bg="darkblue", fg="white").pack(side="left", padx=5)
+    term_var = tk.StringVar()
+    term_dropdown = tk.OptionMenu(top_frame, term_var, "1", "2", "3")
+    term_dropdown.pack(side="left", padx=5)
 
-    tk.Label(fee_window, text="Status (Paid/partial/unpaid):", bg="darkblue", fg="white").pack()
-    status_entry = tk.Entry(fee_window, width=30)
-    status_entry.pack(pady=5)
+    tk.Label(fee_window, text="Expected Amount (GHS):", bg="darkblue", fg="white").pack()
+    expected_entry = tk.Entry(fee_window, width=20)
+    expected_entry.pack(pady=3)
+
+    student_entries = []
+
+    canvas = tk.Canvas(fee_window, bg="darkblue", height=300)
+    scrollbar = tk.Scrollbar(fee_window, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+    canvas.pack(fill="both", expand=True)
+    students_frame = tk.Frame(canvas, bg="darkblue")
+    canvas.create_window((0,0),window=students_frame, anchor="nw")
+    students_frame.bind("<Configure>", lambda e: canvas.configure(
+        scrollregion=canvas.bbox("all")))
+    
+    def load_students():
+        for widget in students_frame.winfo_children():
+            widget.destroy()
+        student_entries.clear()
+
+        selected_class = class_var.get()
+        if not selected_class:
+            messagebox.showinfo("Error", "Please select a class!")
+            return
+
+        cursor.execute(
+            "SELECT name FROM students WHERE class_name=? AND status='Active'",
+            (selected_class,))
+        students = cursor.fetchall()
+
+        if len(students) == 0:
+            messagebox.showinfo("Error", "No active students found!")
+            return
+        for student in students: 
+            row = tk.Frame(students_frame, bg="darkblue")
+            row.pack(pady=3, fill="x", padx=10)
+
+            tk.Label(row, text=student[0], width=20, bg="darkblue", fg="white", anchor="w").pack(side="left")
+
+            status_var = tk.StringVar(value="Not Paid")
+            status_btn = tk.Button(row, text="Not Paid", bg="red", fg="white", width=12)
+
+            amount_entry =tk.Entry(row, width=8)
+            amount_entry.insert(0, expected_entry.get())
+
+            def make_toggle(v, b):
+                def toggle():
+                    if v.get() == "Not Paid":
+                        v.set("Full Payment")
+                        b.config(text="Full Payment", bg="green")
+                    elif v.get() == "Full Payment":
+                        v.set("Partial Payment")
+                        b.config(text="Partial", bg="orange")
+                    else:
+                        v.set("Not Paid")
+                        b.config(text="Not Paid", bg="red")
+                return toggle
+
+            status_btn.config(command=make_toggle(status_var, status_btn))
+            status_btn.pack(side="left", padx=5)
+            amount_entry.pack(side="left", padx=3)
+            student_entries.append((student[0], status_var, amount_entry))
+
+    tk.Button(fee_window, text="Load Students", bg="orange", fg="white", font=("Arial", 11), command=load_students).pack(pady=5)
 
     def save_fees():
-        student_name = name_entry.get() 
-        amount = amount_entry.get()
-        term = term_entry.get()
-        status = status_entry.get()
+        if len(student_entries) == 0:
+            messagebox.showinfo("Error", "Load students first!")
+            return
+        term = term_var.get()
+        if not term:
+            messagebox.showinfo("Error", "Please select a term!")
+            return
         today = str(date.today())
-        cursor.execute(
-            "INSERT INTO fees (student_name, amount, date, term, status) VALUES (?, ?, ?, ?, ?)",
-            (student_name, amount, today, term, status)
-        )
+        for student_name, status_var, amount_entry in student_entries:
+            status = status_var.get()
+            amount = amount_entry.get()
+            cursor.execute(
+                "INSERT INTO fees (student_name, amount, date, term, status) VALUES (?, ?, ?, ?, ?)",
+                (student_name, amount, today, term, status))                               
         conn.commit()
-        messagebox.showinfo("Success", "Fee Recorded Successfully!")
+        messagebox.showinfo("Success", "Fee records saved Successfully!")
         fee_window.destroy()
 
-    tk.Button(fee_window, text="Save Fee", bg="green", fg="white", font=("Arial, 12"), command=save_fees).pack(pady=10)  
+    tk.Button(fee_window, text="Save All Fee Records", bg="green", fg="white", font=("Arial, 12"), command=save_fees).pack(pady=10)  
 
 def open_teachers():
     teacher_window = tk.Toplevel(window)
@@ -470,27 +540,81 @@ def open_view_attendance():
 def open_view_fees():
     fee_view_window = tk.Toplevel(window)
     fee_view_window.title("View Fees")
-    fee_view_window.geometry("600x400")
+    fee_view_window.geometry("600x500")
     fee_view_window.configure(bg="darkblue")
 
     tk.Label(fee_view_window, text="VIEW FEES", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
 
-    text_box = tk.Text(fee_view_window, width=70, height=20)
+    top_frame = tk.Frame(fee_view_window, bg="darkblue")
+    top_frame.pack(pady=5)
+
+    tk.Label(top_frame, text="Class:", bg="darkblue", fg="white").pack(side="left", padx=5)
+    cursor.execute("SELECT DISTINCT class_name FROM students WHERE status='Active'")
+    classes = [row[0] for row in cursor.fetchall()]
+    class_var = tk.StringVar()
+    class_dropdown = tk.OptionMenu(top_frame, class_var, *classes)
+    class_dropdown.pack(side="left", padx=5)
+
+    tk.Label(top_frame, text="Term:", bg="darkblue", fg="white").pack(side="left", padx=5)
+    term_var = tk.StringVar()
+    term_dropdown = tk.OptionMenu(top_frame, term_var, "1", "2", "3")
+    term_dropdown.pack(side="left", padx=5)
+
+    tk.Button(top_frame, text="Search", bg="orange", fg="white", command=lambda: show_fees()).pack(side="left", padx=5)
+
+    text_box = tk.Text(fee_view_window, width=70, height=22)
     text_box.pack(pady=10)
 
-    cursor.execute("SELECT * FROM fees")
-    records = cursor.fetchall()
-    if len(records) == 0:
-        text_box.insert(tk.END, "No fee recorded yet!")
-    else:
-        for record in records:
-            text_box.insert(tk.END, "ID: " + str(record[0]) + "\n")
-            text_box.insert(tk.END, "Student: " + str(record[1] or "") + "\n")
-            text_box.insert(tk.END, "Amount: GHS " + str(record[2] or "") + "\n")
-            text_box.insert(tk.END, "Date: " + str(record[3] or "") + "\n")
-            text_box.insert(tk.END, "Term: " + str(record[4] or "") + "\n")
-            text_box.insert(tk.END, "Status: " + str(record[5] or "") + "\n")
-            text_box.insert(tk.END, "------------------------\n") 
+    def show_fees():
+        text_box.delete(1.0, tk.END)
+        selected_class = class_var.get()
+        term = term_var.get()
+
+        if not selected_class or not term:
+            messagebox.showinfo("Error", "Please select class and term!")
+            return
+        
+        cursor.execute(
+            "SELECT name FROM students WHERE class_name=? AND status='Active'",
+            (selected_class,))
+        students = cursor.fetchall()
+
+        full_payment = []
+        partial_payment = []
+        not_paid = []
+
+        for student in students:
+            cursor.execute(
+                "SELECT amount, status FROM fees WHERE student_name=? AND term=? ORDER BY date DESC LIMIT 1",
+                (student[0], term))
+            fee = cursor.fetchone()
+            if fee:
+                if fee[1] == "Full Payment":
+                    full_payment.append((student[0], fee[0]))
+                elif fee[1] == "Partial Payment":
+                    partial_payment.append((student[0], fee[0]))
+                else:
+                    not_paid.append(student[0])
+            else:
+                not_paid.append(student[0])
+
+        text_box.insert(tk.END, f"CLASS: {selected_class} | TERM: {term}\n")
+        text_box.insert(tk.END, "="*50 + "\n\n")  
+
+        text_box.insert(tk.END, f"FULL PAYMENT ({len(full_payment)}):\n")
+        for name, amount in full_payment:
+            text_box.insert(tk.END, f" {name} - GHS {amount}\n")
+
+        text_box.insert(tk.END, f"\nPARTIAL PAYMENT ({len(partial_payment)}):\n")
+        for nmae, amount in partial_payment:
+            text_box.insert(tk.END, f" {name} - GHS {amount}\n")
+
+        text_box.insert(tk.END, f"\nNOT PAID ({len(not_paid)}):\n")
+        for name in not_paid:
+            text_box.insert(tk.END, f" {name}\n")
+
+        text_box.insert(tk.END, f"\n" + "="*50 + "\n")
+        text_box.insert(tk.END, f"Total Paid: {len(full_payment)} | Partial: {len(partial_payment)} | Not Paid: {len(not_paid)}\n")        
 
 def open_view_teachers():
     teacher_view_window = tk.Toplevel(window)
