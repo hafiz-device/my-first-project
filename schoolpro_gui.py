@@ -361,8 +361,84 @@ def open_fees():
                 "INSERT INTO fees (student_name, amount, date, term, status) VALUES (?, ?, ?, ?, ?)",
                 (student_name, amount, today, term, status))                               
         conn.commit()
-        messagebox.showinfo("Success", "Fee records saved Successfully!")
-        fee_window.destroy()
+
+        # Ask if they want to generate receipts
+        generate = messagebox.askyesno("Generate Receipts",
+            "Fee records saved! Do you want to generate PDF receipts for students who paid?")
+        
+        if generate:
+            import shutil
+            suffix = str(int(time.time()))
+            receipt_count = 0
+            for student_name, status_var, amount_entry in student_entries:
+                status = status_var.get()
+                if status in "Full Payment":
+                    amount = amount_entry.get()
+                    receipt_num = "REC-" + str(int(time.time())) + "-" + str(receipt_count)
+                    filename = os.path.join(os.path.expanduser("~"), "Desktop",
+                        student_name + "_fee_receipt.pdf")
+
+                    doc = SimpleDocTemplate(filename, pagesize=A4,
+                        leftMargin=0.75*inch, rightMargin=0.75*inch,
+                        topMargin=0.75*inch, bottomMargin=0.75*inch)
+
+                    styles = getSampleStyleSheet()
+                    title_style = ParagraphStyle("RTitle" + suffix, parent=styles["Normal"],
+                        fontName="Helvetica-Bold", fontSize=18, alignment=TA_CENTER, spaceAfter=10)
+                    center_style = ParagraphStyle("RCenter" + suffix, parent=styles["Normal"],
+                        fontName="Helvetica", fontSize=11, alignment=TA_CENTER, spaceAfter=6)
+                    labe_style = ParagraphStyle("RLabel" + suffix, parent=styles["Normal"],
+                        fontName="Helvetica-Bold", fontSize=11, spaceAfter=4)
+                    value_style= ParagraphStyle("RValue" + suffix, parent=styles["Normal"],
+                        fontName="Helvetica", fontSize=11, spaceAfter=4)
+
+                    story =[]
+                    story.append(Paragraph(get_setting('school_name'), title_style))
+                    story.append(Paragraph("OFFICIAL FEE RECEIPT", center_style))
+                    story.append(Spacer(1, 0.2*inch))
+
+                    receipt_data = [
+                        ["Receipt No:", receipt_num],
+                        ["Student Name:", student_name],
+                        ["Term:", term],
+                        ["Amount Paid:", f"GHS {amount}"],
+                        ["Payment Status:", status],
+                    ]
+
+                    receipt_table = Table(receipt_data, colWidths=[2*inch, 4*inch])
+                    receipt_table.setStyle(TableStyle([
+                        ("GRID", (0,0), (-1,-1), 0.5, colors.gray),
+                        ("TOPPADDING", (0,0), (-1,-1), 6),
+                        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+                        ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#EBF3FF")),
+                    ]))            
+                    story.append(receipt_table)
+                    story.append(Spacer(1, 0.5*inch))
+
+                    sig_data = [
+                        ["________________________", "________________________"],
+                        ["Headmaster's Signature", "Accountant's Signature"],
+                    ]
+                    sig_table = Table(sig_data, colWidths=[3*inch, 3*inch])
+                    sig_table.setStyle(TableStyle([
+                        ("ALIGN", (0,0), (-1,-1), "CENTER"),
+                        ("FONTNAME", (0,1), (-1,-1), "Helvetica-Bold"),
+                        ("FONTSIZE", (0,0), (-1,-1), 10),
+                    ]))
+                    story.append(sig_table)
+
+                    doc.build(story)
+                    receipt_count += 1
+                    suffix = str(int(time.time())) + str(receipt_count)
+
+            if receipt_count > 0:
+                messagebox.showinfo("Success", str(receipt_count) + " receipt(s) save to Desktop!")
+            else:
+                messagebox.showinfo("Info", "No paid students - no receipts generated.")
+        else:
+            messagebox.showinfo("Success", "Fee records saved successfully!")
+
+        fee_window.destroy                        
 
     tk.Button(fee_window, text="Save All Fee Records", bg="green", fg="white", font=("Arial, 12"), command=save_fees).pack(pady=10)  
 
