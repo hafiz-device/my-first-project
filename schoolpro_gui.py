@@ -4,7 +4,6 @@
 
 import tkinter as tk
 from tkinter import messagebox
-import sqlite3 
 from datetime import date 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -18,8 +17,7 @@ import os
 import time 
 
 # Connect to database 
-conn = sqlite3.connect("/home/hafiz/my-first-project/schoolpro.db")
-cursor = conn.cursor()
+from database import conn, cursor
 
 def get_setting(key):
     cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
@@ -751,16 +749,69 @@ def open_update_status():
 
     tk.Button(status_window, text="Update Status", bg="green", fg="white", font=("Arial", 12), command=update_status).pack(pady=10)
 
-# Login credentials (simple version)
+current_user_role = ""
+current_user_name = ""
+
 def check_login():
+    global current_user_role, current_user_name
     entered_user = user_entry.get()
     entered_pass = pass_entry.get()
 
-    if entered_user == "admin" and entered_pass == get_setting('password'):
+    cursor.execute("SELECT role, full_name FROM users WHERE username=? AND password=?",
+                   (entered_user, entered_pass))
+    result = cursor.fetchone()
+
+    if result:
+        current_user_role = result[0]
+        current_user_name = result[1]
         login_window.destroy()
         window.deiconify()
+        apply_role(current_user_role)
     else:
-        messagebox.showerror("Error", "Wrong username or password!")  
+        messagebox.showinfo("Error", "Wrong username or password!") 
+
+def apply_role(role):
+    if role == "admin":
+        # show all buttons
+        btn_register.grid(row=0, column=0, pady=2, padx=2)
+        btn_attendance.grid(row=1, column=0, pady=2, padx=2)
+        btn_grades.grid(row=2, column=0, pady=2, padx=2)
+        btn_fees.grid(row=3, column=0, pady=2, padx=2)
+        btn_teachers.grid(row=4, column=0, pady=2, padx=2)
+        btn_view_students.grid(row=5, column=0, pady=2, padx=2)
+        btn_search.grid(row=6, column=0, pady=2, padx=2)
+        btn_attendance_view.grid(row=7, column=0, pady=2, padx=2)
+        btn_fees_view.grid(row=8, column=0, pady=2, padx=2)
+        btn_teachers_view.grid(row=9, column=0, pady=2, padx=2)
+        btn_archive.grid(row=10, column=0, pady=2, padx=2)
+        btn_report.grid(row=11, column=0, pady=2, padx=2)
+        btn_bulk.grid(row=12, column=0, pady=2, padx=2)
+        btn_settings.grid(row=13, column=0, pady=2, padx=2)
+        btn_backup.grid(row=14, column=0, pady=2, padx=2)
+        btn_term.grid(row=15, column=0, pady=2, padx=2)
+        btn_manage_users.grid(row=16, column=0, pady=2, padx=2)
+        btn_exit.grid(row=17, column=0, pady=2, padx=2)
+
+    elif role == "accountant":
+        # Hide everything except fees
+        btn_register.grid_remove()
+        btn_attendance.grid_remove()
+        btn_grades.grid_remove()
+        btn_teachers.grid_remove()
+        btn_view_students.grid_remove()
+        btn_search.grid_remove()
+        btn_attendance_view.grid_remove()
+        btn_teachers_view.grid_remove()
+        btn_archive.grid_remove()
+        btn_report.grid_remove()
+        btn_bulk.grid_remove()
+        btn_settings.grid_remove()
+        btn_backup.grid_remove()
+        btn_term.grtid_remove()
+        # Only show fees, view fees, exit
+        btn_fees.grid(row=1, column=0, pady=4, padx=10)
+        btn_fees_view.grid(row=2, column=0, pady=4, padx=10)
+        btn_exit.grid(row=2, column=0, pady=4, padx=10)
 
 def open_report_card():
     report_window = tk.Toplevel(window)
@@ -1469,8 +1520,68 @@ def open_term_report():
         messagebox.showinfo("Success", f"Term report saved to Desktop!")
         term_window.destroy()
 
-    tk.Button(term_window, text="Generate Term Report", bg="green", fg="white", font=("Arial", 12), command=generate_term_report).pack(pady=20)    
-            
+    tk.Button(term_window, text="Generate Term Report", bg="green", fg="white", font=("Arial", 12), command=generate_term_report).pack(pady=20)
+
+def open_manage_users():
+    users_window = tk.Toplevel(window)
+    users_window.title("Manage Users")
+    users_window.geometry("620x530")
+    users_window.configure(bg="darkblue")
+
+    tk.Label(users_window, text="MANAGE USERS", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    # View existing users
+    text_box = tk.Text(users_window, width=68, height=8, wrap="none")
+    text_box.pack(pady=5)
+
+    cursor.execute("SELECT username, role, full_name FROM users")
+    users = cursor.fetchall()
+    for user in users:
+        text_box.insert(tk.END, f"Username: {user[0]} | Role: {user[1]} | Name: {user[2]}\n")
+
+    # Disable editing so users can't type inside the box
+    text_box.configure(state="disabled")    
+
+    tk.Label(users_window, text="--- A New User ---", bg="darkblue", fg="white").pack(pady=5)
+
+    tk.Label(users_window, text="Full Name:", bg="darkblue", fg="white").pack()
+    fullname_entry = tk.Entry(users_window, width=30)
+    fullname_entry.pack(pady=3)
+
+    tk.Label(users_window, text="Usersname:", bg="darkblue", fg="white").pack()
+    username_entry = tk.Entry(users_window, width=30)
+    username_entry.pack(pady=3)
+
+    tk.Label(users_window, text="Password:", bg="darkblue", fg="white").pack()
+    password_entry = tk.Entry(users_window, width=30, show="*")
+    password_entry.pack(pady=3)
+
+    tk.Label(users_window, text="Role:", bg="darkblue", fg="white").pack()
+    role_var = tk.StringVar(value="accountant")
+    role_dropdown = tk.OptionMenu(users_window, role_var, "admin", "accountant", "teacher")
+    role_dropdown.pack(pady=3)
+
+    def add_user():
+        full_name = fullname_entry.get()            
+        username = username_entry.get()
+        password = password_entry.get()
+        role = role_var.get()
+
+        if not full_name or not username or not password:
+            messagebox.showinfo("Error", "Please fill all fields!")
+            return
+        try:
+            cursor.execute(
+                "INSERT INTO users(username, password, role, full_name) VALUES (?, ?, ?, ?)",
+                (username, password, role, full_name))
+            conn.commit()
+            messagebox.showinfo("Success", "User added successfuly")
+            users_window.destroy()
+            open_manage_users()
+        except:
+            messagebox.showerror("Error", "Username already exists!")
+
+    tk.Button(users_window, text="Add User", bg="green", fg="white", font=("Arial", 12), command=add_user).pack(pady=10)                
 # Create main window
 window = tk.Tk()
 window.withdraw()
@@ -1533,12 +1644,11 @@ btn_fees.grid(row=3, column=0, pady=2, padx=2)
 btn_teachers = tk.Button(button_frame, text="Teacher Management", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_teachers)
 btn_teachers.grid(row=4, column=0, pady=2, padx=2)
 
-btn_View_students = tk.Button(button_frame, text="View All Students", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_students)
-btn_View_students.grid(row=5, column=0, pady=2, padx=2)
+btn_view_students = tk.Button(button_frame, text="View All Students", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_students)
+btn_view_students.grid(row=5, column=0, pady=2, padx=2)
 
 btn_search = tk.Button(button_frame, text="Search Student", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_search)
 btn_search.grid(row=6, column=0, pady=2, padx=2)
-
 
 btn_attendance_view = tk.Button(button_frame, text="View Attendance", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_attendance)
 btn_attendance_view.grid(row=7, column=0, pady=2, padx=2)
@@ -1567,8 +1677,11 @@ btn_backup.grid(row=14, column=0, pady=2, padx=2)
 btn_term = tk.Button(button_frame, text="Term Reports", font=("Arial", 12), width=25, bg="brown", fg="white", command=open_term_report)
 btn_term.grid(row=15, column=0, pady=2, padx=2)
 
+btn_manage_users = tk.Button(button_frame, text="Manage Users", font=("Arial", 12), width=25, bg="navy", fg="white", command=open_manage_users)
+btn_manage_users.grid(row=16, column=0, pady=2, padx=2)
+
 btn_exit = tk.Button(button_frame, text="Exit", font=("Arial, 12"), width=25, bg="red", fg="white", command=window.quit)
-btn_exit.grid(row=16, column=0, pady=2, padx=2)
+btn_exit.grid(row=17, column=0, pady=2, padx=2)
 
 #Login window
 login_window = tk.Toplevel()

@@ -1,7 +1,12 @@
 import sqlite3
 
 # Connect to database
-conn = sqlite3.connect("/home/hafiz/my-first-project/schoolpro.db")
+import os 
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(base_dir, 'schoolpro.db')
+
+conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
 # Student table
@@ -113,6 +118,24 @@ defaults = [
 ]                     
 for key, val in defaults:
     cursor.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)",(key, val))
+
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT,
+        role TEXT,
+        full_name TEXT
+    )           
+''')
+
+# Default admin account
+cursor.execute("INSERT OR IGNORE INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)",
+    ('admin', 'schoolpro123', 'admin', 'Administrator'))
+
+# Default accountant account
+cursor.execute("INSERT OR IGNORE INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)",
+    ('accountant', 'accountant123', 'accountant', 'Accountant'))                                  
 
 
 conn.commit()
