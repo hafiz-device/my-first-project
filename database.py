@@ -94,6 +94,16 @@ cursor.execute("""
         section TEXT
     )
 """)
+# Teachers Assignments table (supports one teacher teaching mltiple classes/subjects)
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS teacher_assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_name TEXT,
+        subject TEXT,
+        class_name TEXT,
+        section TEXT
+    )
+""")
 
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS settings(
@@ -109,6 +119,7 @@ defaults = [
     ('logo_path', ''),
     ('currency', 'GHS'),
     ('house_name', 'Red,Blue,Green,Yellow'),
+    ('subject', 'Mathematics\nEnglish\nScience\nsocial studies'),
     ('grade_A', '80'),
     ('grade_B', '70'),
     ('grade_C', '60'),

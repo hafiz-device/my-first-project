@@ -48,7 +48,28 @@ def generate_student_id():
     year = datetime.now().year
     cursor.execute("SELECT COUNT(*) FROM students")
     count = cursor.fetchone()[0] + 1
-    return f"SPG-{year}-{count:05d}"         
+    return f"SPG-{year}-{count:05d}"
+
+def get_teacher_info(full_name):
+    """
+    Returns a list of assignments for a teacher, e.g:
+    [{'subject': 'Math', 'class_name': 'Class 4', 'section': 'Academic'}, ...]
+    Returns an empty list if no assignments are found.
+    """
+    cursor.execute("""
+        SELECT subject, class_name, section
+        FROM teacher_assignments
+        WHERE UPPER(teacher_name) = UPPER(?)
+    """, (full_name,))
+    rows = cursor.fetchall()
+    assignments = []
+    for row in rows:
+        assignments.append({
+            "subject": row[0],
+            "class_name": row[1],
+            "section": row[2]
+        })              
+    return assignments
 
 def open_registration():
     reg_window = tk.Toplevel(window)
@@ -488,6 +509,141 @@ def open_teachers():
 
     tk.Button(teacher_window, text="Save Teacher", bg="green", fg="white", font=("Arial", 12), command=save_teacher).pack(pady=10)
 
+def open_assign_teacher():
+    assign_window = tk.Toplevel(window)
+    assign_window.title("Assign Class")
+    assign_window.configure(bg="darkblue")
+
+    window_width = 550
+    window_height = 650
+    screen_width = assign_window.winfo_screenwidth()
+    screen_height = assign_window.winfo_screenheight()
+    x = (screen_width // 2) - (window_width // 2)
+    y = (screen_height // 2) - (window_height // 2)
+    assign_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+    tk.Label(assign_window, text="ASSIGN CLASS/SUBJECT", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    tk.Label(assign_window, text="Teacher Name:", bg="darkblue", fg="white").pack()
+    cursor.execute("SELECT DISTINCT name FROM teachers")
+    teacher_names = [row[0] for row in cursor.fetchall()]  
+    teacher_var = tk.StringVar()
+    teacher_dropdown = tk.OptionMenu(assign_window, teacher_var, *teacher_names)
+    teacher_dropdown.pack(pady=5)
+
+    tk.Label(assign_window, text="Section (Academic/Islamic):", bg="darkblue", fg="white").pack()
+    section_entry = tk.Entry(assign_window, width=30)
+    section_entry.pack(pady=5)
+
+    tk.Label(assign_window, 
+             text="This assigns EVERY checked subject to EVERY checked class.\n"
+                  "if this teacher teaches different subjects to different classes,\n"
+                  "save separatly for each class.",
+            bg="darkblue", fg="yellow", font=("Arial", 9), justify="center").pack(pady=10)
+
+    main_frame = tk.Frame(assign_window, bg="darkblue")
+    main_frame.pack(pady=10, fill="both", expand=True)
+
+    subjects_col = tk.Frame(main_frame, bg="darkblue")
+    subjects_col.pack(side="left", padx=15, anchor="n", fill="both", expand=True)
+
+    classes_col = tk.Frame(main_frame, bg="darkblue")
+    classes_col.pack(side="left", padx=15, anchor="n", fill="both", expand=True)
+
+    # --- subjects (scrollabel) ---
+    tk.Label(subjects_col, text="select Subjects:", bg="darkblue", fg="white", font=("Arial", 12, "bold")).pack(pady=(0, 5))
+
+    subjects_text = get_setting('subjects')
+    subject_list = [s.strip() for s in subjects_text.splitlines() if s.strip()]
+    subject_vars ={}
+
+    subject_canvas = tk.Canvas(subjects_col, bg="darkblue", height=200, width=180, highlightthickness=0)
+    subject_scrollbar = tk.Scrollbar(subjects_col, orient="vertical", command=subject_canvas.yview)
+    subject_canvas.configure(yscrollcommand=subject_scrollbar.set)
+    subject_canvas.pack(side="left", fill="both", expand=True)
+    subject_scrollbar.pack(side="right", fill="y")
+
+    subject_list_frame = tk.Frame(subject_canvas, bg="darkblue")
+    subject_canvas.create_window((0, 0), window=subject_list_frame, anchor="nw")
+    subject_list_frame.bind("<Configure>", lambda e: subject_canvas.configure(scrollregion=subject_canvas.bbox("all")))
+
+
+    if not subject_list:
+        tk.Label(subject_list_frame, text="No subjects found.\nAdd them in  Settings .", bg="darkblue", fg="yellow").pack()
+    else:
+        for subject in subject_list:
+            var = tk.BooleanVar()
+            subject_vars[subject] = var
+            tk.Checkbutton(subject_list_frame, text=subject, variable=var, bg="darkblue", fg="white", selectcolor="green",
+                            font=("Arial", 11), anchor="w").pack(fill="x")
+
+    # --- Classes (scrollable) ---
+    tk.Label(classes_col, text="Select Classes:", bg="darkblue", fg="white", font=("Arial", 12, "bold")).pack(pady=(0, 5))
+    
+    cursor.execute("SELECT DISTINCT class_name FROM students WHERE status='Active'")
+    class_names = [row[0] for row in cursor.fetchall()]
+    class_vars = {}
+    
+    class_canvas = tk.Canvas(classes_col, bg="darkblue", height=200, width=180, highlightthickness=0)
+    class_scrollbar = tk.Scrollbar(classes_col, orient="vertical", command=class_canvas.yview)
+    class_canvas.configure(yscrollcommand=class_scrollbar.set)
+    class_canvas.pack(side="left", fill="both", expand=True)
+    class_scrollbar.pack(side="right", fill="y")
+    
+    class_list_frame = tk.Frame(class_canvas, bg="darkblue")
+    class_canvas.create_window((0, 0), window=class_list_frame, anchor="nw")
+    class_list_frame.bind("<Configure>", lambda e: class_canvas.configure(scrollregion=class_canvas.bbox("all")))
+    
+    
+    if not class_names:
+            tk.Label(class_list_frame, text="No classes found.", bg="darkblue", fg="yellow").pack()
+    else:
+        for class_name in class_names:
+            var = tk.BooleanVar()
+            class_vars[class_name] = var
+            tk.Checkbutton(class_list_frame, text=class_name, variable=var, bg="darkblue", fg="white", selectcolor="green",
+                                font=("Arial", 11), anchor="w").pack(fill="x")
+            
+    # --- Save with confirmation ---
+    def save_assignment():
+        teacher_name = teacher_var.get()
+        section = section_entry.get()
+        selected_subjects = [subj for subj, var in subject_vars.items() if var.get()]
+        selected_classes = [cls for cls, var in class_vars.items() if var.get()]
+
+        if not teacher_name:
+            messagebox.showinfo("Error", "Please select a teacher!")
+            return
+        if not selected_subjects:
+            messagebox.showinfo("Error", "Please select at least one subject!")
+            return
+        if not selected_classes:
+            messagebox.showinfo("Error", "Please select at least one class!")
+            return
+
+        preview_lines = []
+        for subject in selected_subjects:
+             for class_name in selected_classes:
+                 preview_lines.append(f"{subject} - {class_name}")
+
+        preview_text = "\n".join(preview_lines)
+        confirm = messagebox.askyesno("Confirm Assignment", f"This willcreate the following {len(preview_lines)} assignment(s) for {teacher_name}:\n\n" f"{preview_text}\n\nContinue?", parent=assign_window)
+        if not confirm:
+             return
+
+        count = 0
+        for subject in selected_subjects:
+             for class_name in selected_classes:
+                cursor.execute("""
+                    INSERT INTO teacher_assignments (teacher_name, subject, class_name, section) VALUES (?, ?, ?, ?)
+                """, (teacher_name, subject, class_name, section))
+                count += 1
+        conn.commit()
+        messagebox.showinfo("Success", f"{count} assignment(s) created for {teacher_name}!")
+        assign_window.destroy()
+
+    tk.Button(assign_window, text="Save Assignment(s)", bg="green", fg="white", font=("Arial", 12), command=save_assignment).pack(pady=20)      
+
 def open_view_students():
     view_window = tk.Toplevel(window)
     view_window.title("All Students")
@@ -772,25 +928,37 @@ def check_login():
 
 def apply_role(role):
     if role == "admin":
-        # show all buttons
-        btn_register.grid(row=0, column=0, pady=2, padx=2)
-        btn_attendance.grid(row=1, column=0, pady=2, padx=2)
-        btn_grades.grid(row=2, column=0, pady=2, padx=2)
-        btn_fees.grid(row=3, column=0, pady=2, padx=2)
-        btn_teachers.grid(row=4, column=0, pady=2, padx=2)
-        btn_view_students.grid(row=5, column=0, pady=2, padx=2)
-        btn_search.grid(row=6, column=0, pady=2, padx=2)
-        btn_attendance_view.grid(row=7, column=0, pady=2, padx=2)
-        btn_fees_view.grid(row=8, column=0, pady=2, padx=2)
-        btn_teachers_view.grid(row=9, column=0, pady=2, padx=2)
-        btn_archive.grid(row=10, column=0, pady=2, padx=2)
-        btn_report.grid(row=11, column=0, pady=2, padx=2)
-        btn_bulk.grid(row=12, column=0, pady=2, padx=2)
-        btn_settings.grid(row=13, column=0, pady=2, padx=2)
-        btn_backup.grid(row=14, column=0, pady=2, padx=2)
-        btn_term.grid(row=15, column=0, pady=2, padx=2)
-        btn_manage_users.grid(row=16, column=0, pady=2, padx=2)
-        btn_exit.grid(row=17, column=0, pady=2, padx=2)
+        # Show all bottuns
+        # --- COLUMN 0 (LEFT) ---
+        btn_register.grid(row=0, column=0, pady=3, padx=5)
+        btn_attendance.grid(row=1, column=0, pady=3, padx=5)
+        btn_grades.grid(row=2, column=0, pady=3, padx=5)
+        btn_fees.grid(row=3, column=0, pady=3, padx=5)
+        btn_teachers.grid(row=4, column=0, pady=3, padx=5)
+        btn_view_students.grid(row=5, column=0, pady=3, padx=5)
+
+        # --- COLUMN 1 (MIDDLE) ---
+        btn_search.grid(row=0, column=1, pady=3, padx=5)
+        btn_attendance_view.grid(row=1, column=1, pady=3, padx=5)
+        btn_fees_view.grid(row=2, column=1, pady=3, padx=5)
+        btn_teachers_view.grid(row=3, column=1, pady=3, padx=5)        
+        btn_archive.grid(row=4, column=1, pady=3, padx=5)
+        btn_settings.grid(row=5, column=1, pady=3, padx=5)
+        
+        
+        # --- COLUMN 2 (RIGHT) ---
+        btn_report.grid(row=0, column=2, pady=3, padx=5)
+        btn_bulk.grid(row=1, column=2, pady=3, padx=5)
+        btn_backup.grid(row=2, column=2, pady=3, padx=5)
+        btn_manage_users.grid(row=3, column=2, pady=3, padx=5)
+        btn_assign_teacher.grid(row=4, column=2, pady=3, padx=5)
+        btn_teacher_portal.grid(row=5, column=2, pady=3, padx=5)
+        btn_term.grid(row=6, column=2, pady=3, padx=5)
+
+        # BOTTOM: EXIT
+        btn_exit.grid(row=7, column=0, columnspan=3, pady=15, padx=5)
+
+
 
     elif role == "accountant":
         # Hide everything except fees
@@ -798,6 +966,7 @@ def apply_role(role):
         btn_attendance.grid_remove()
         btn_grades.grid_remove()
         btn_teachers.grid_remove()
+        btn_assign_teacher.grid_remove()
         btn_view_students.grid_remove()
         btn_search.grid_remove()
         btn_attendance_view.grid_remove()
@@ -807,11 +976,39 @@ def apply_role(role):
         btn_bulk.grid_remove()
         btn_settings.grid_remove()
         btn_backup.grid_remove()
-        btn_term.grtid_remove()
+        btn_term.grid_remove()
+        btn_manage_users.grid_remove()
+
         # Only show fees, view fees, exit
         btn_fees.grid(row=1, column=0, pady=4, padx=10)
         btn_fees_view.grid(row=2, column=0, pady=4, padx=10)
+        btn_exit.grid(row=3, column=0, pady=10, padx=10)
+
+    elif role == "teacher":
+        # Hide everything except the teacher portal
+        btn_register.grid_remove()
+        btn_attendance.grid_remove()
+        btn_grades.grid_remove()
+        btn_fees.grid_remove()
+        btn_teachers.grid_remove()
+        btn_assign_teacher.grid_remove()
+        btn_view_students.grid_remove()
+        btn_search.grid_remove()
+        btn_attendance_view.grid_remove()
+        btn_fees_view.grid_remove()
+        btn_teachers_view.grid_remove()
+        btn_archive.grid_remove()
+        btn_report.grid_remove()
+        btn_bulk.grid_remove()
+        btn_settings.grid_remove()
+        btn_backup.grid_remove()
+        btn_term.grid_remove()
+        btn_manage_users.grid_remove()
+        
+        # Only show the teacher portal button, exit
+        btn_teacher_portal.grid(row=1, column=0, pady=4, padx=10)
         btn_exit.grid(row=2, column=0, pady=4, padx=10)
+            
 
 def open_report_card():
     report_window = tk.Toplevel(window)
@@ -1280,7 +1477,7 @@ def open_bulk_report_card():
 def open_settings():
     settings_window = tk.Toplevel(window)
     settings_window.title("Settings")
-    settings_window.geometry("450x550")
+    settings_window.geometry("450x650")
     settings_window.configure(bg="darkblue")
 
     tk.Label(settings_window, text="SETTINGS", font=("Arial", 16, "bold"),
@@ -1306,10 +1503,30 @@ def open_settings():
         entry.pack(pady=3)
         fields[key] = entry
 
+    # Multi-line Subjects Box (Press Enter for new line)
+    tk.Label(settings_window, text="Subjects (one per line):", bg="darkblue", fg="white").pack(pady=(5, 0))
+    subjects_box = tk.Text(settings_window, width=35, height=5)
+
+    # Load subjects and make sure they display line-by-line 
+    raw_subjects = get_setting('subjects')
+    formatted_subjects = raw_subjects.replace(',', '\n')
+    subjects_box.insert("1.0", formatted_subjects)
+    subjects_box.pack(pady=3)
+
     def save_settings():
+        # save reguler fields
         for key, entry in fields.items():
             cursor.execute("UPDATE settings SET value = ? WHERE key = ?",
                            (entry.get(), key))
+
+        # Read lines from text box, strip whitespace, remove empty lines
+        subjects_text = subjects_box.get("1.0", "end-1c").strip()
+        subjects_list = [line.strip() for line in subjects_text.splitlines() if line.strip()]
+        clean_subjects = "\n".join(subjects_list)
+
+        # Save clean subjects back to settings
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ('subjects', clean_subjects))
+
         conn.commit()
         messagebox.showinfo("Success", "Settings saved successfully!")
         settings_window.destroy()
@@ -1521,7 +1738,236 @@ def open_term_report():
         term_window.destroy()
 
     tk.Button(term_window, text="Generate Term Report", bg="green", fg="white", font=("Arial", 12), command=generate_term_report).pack(pady=20)
+def open_teacher_portal():
+    assignments = get_teacher_info(current_user_name)
 
+    if not assignments:
+        messagebox.showinfo("Error", f"No assigments found for '{current_user_name}'.\n" "Please ask admin to assign a class/subject in Manage Teachers.")
+        return
+
+    if len(assignments) == 1:
+        launch_teacher_dashboard(assignments[0])
+    else:
+        choose_assignment(assignments)
+
+def choose_assignment(assignments):
+    choose_window = tk.Toplevel(window)
+    choose_window.title("Select Class/Subject")
+    choose_window.geometry("400x300")
+    choose_window.configure(bg="darkblue")
+
+    tk.Label(choose_window, text="SELECT CLASS/SUBJECT", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    tk.Label(choose_window, text=f"{current_user_name}, yuo teach multiple classes.\nPick one to continue:", bg="darkblue", fg="yellow", font=("Arial", 11)).pack(pady=10)
+
+    for assignment in assignments:
+        label = f"{assignment['subject']} - {assignment['class_name']}"
+        tk.Button(choose_window, text=label, font=("Arial", 12), bg="green", fg="white", width=30, command=lambda a=assignment: [choose_window.destroy(), launch_teacher_dashboard(a)]).pack(pady=8)
+
+def launch_teacher_dashboard(assignment):
+    portal_window = tk.Toplevel(window)
+    portal_window.title("Teacher Portal")
+    portal_window.geometry("450x400")
+    portal_window.configure(bg="darkblue")
+
+    tk.Label(portal_window, text="TEACHER PORTAL", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    tk.Label(portal_window, text=f"Welcome, {current_user_name}", font=("Arial", 12), bg="darkblue", fg="white").pack(pady=5)
+
+    tk.Label(portal_window, text=f"Class: {assignment['class_name']}  |   Subject: {assignment['subject']}", font=("Arial", 11), bg="darkblue", fg="yellow").pack(pady=5)
+
+    tk.Button(portal_window, text="Mark Attendance", font=("Arial", 12), bg="green", fg="white", width=25, command=lambda: open_teacher_attendance(assignment)).pack(pady=15)
+
+    tk.Button(portal_window, text="Enter Grades", font=("Arial", 12), bg="green", fg="white", width=25, command=lambda: open_teacher_grades(assignment)).pack(pady=15)
+
+    tk.Button(portal_window, text="Close", font=("Arial", 12), bg="red", fg="white", width=25, command=portal_window.destroy).pack(pady=15)
+
+def open_teacher_attendance(assignment):
+    att_window = tk.Toplevel(window)
+    att_window.title("Mark Attendance")
+    att_window.geometry("500x600")
+    att_window.configure(bg="darkblue")
+
+    tk.Label(att_window, text=f"ATTENDANCE - {assignment['class_name']}", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    tk.Label(att_window, text="Date:", bg="darkblue", fg="white").pack()
+    date_entry = tk.Entry(att_window, width=30)
+    date_entry.insert(0, str(date.today()))
+    date_entry.pack(pady=5)
+
+    student_entries = []
+
+    canvas = tk.Canvas(att_window, bg="darkblue", height=250)
+    scrollbar = tk.Scrollbar(att_window, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+    canvas.pack(fill="both", expand=True)
+    students_frame = tk.Frame(canvas, bg="darkblue")
+    canvas.create_window((0, 0), window=students_frame, anchor="nw")
+    students_frame.bind("<Configure>", lambda e: canvas.configure(
+        scrollregion=canvas.bbox("all")))
+
+    def load_students():
+        for widget in students_frame.winfo_children():
+            widget.destroy()
+        student_entries.clear()
+
+        cursor.execute(
+            "SELECT name FROM students WHERE class_name=? AND status='Active'",
+            (assignment['class_name'],))
+        students = cursor.fetchall()
+
+        if len(students) == 0:
+            messagebox.showinfo("Error", "No active students found in this class!")
+            return
+
+        for student in students:
+            row = tk.Frame(students_frame, bg="darkblue")
+            row.pack(pady=3, fill="x", padx=10)
+            tk.Label(row, text=student[0], width=20, bg="darkblue", fg="white", anchor="w").pack(side="left")
+
+            status_var = tk.StringVar(value="Present")
+            btn = tk.Button(row, text="Present", bg="green", fg="white", width=10)
+
+            def make_toggle(v, b):
+                def toggle():
+                    if v.get() == "Present":
+                        v.set("Absent")
+                        b.config(text="Absent", bg="red")
+                    else:
+                        v.set("Present")
+                        b.config(text="Present", bg="green")
+                return toggle    
+
+            btn.config(command=make_toggle(status_var, btn))
+            btn.pack(side="left", padx=5)
+            student_entries.append((student[0], status_var))
+
+    load_students()
+
+    def save_attendance():
+        if len(student_entries) == 0:
+            messagebox.showinfo("Error", "No students loaded!")
+            return
+        today = date_entry.get()
+        for student_name, status_var in student_entries:
+            cursor.execute(
+                "INSERT INTO attendance (student_name, date, status) VALUES (?, ?, ?)", 
+                (student_name, today, status_var.get()))
+        conn.commit()
+        messagebox.showinfo("Success", "Attendance saved for all students!")
+        att_window.destroy()
+
+    tk.Button(att_window, text="Save Attendance", bg="green", fg="white", font=("Arial", 12), command=save_attendance).pack(pady=15)
+
+def open_teacher_grades(assignment):
+    grades_window = tk.Toplevel(window)
+    grades_window.title("Enter Grades")
+    grades_window.geometry("550x600")
+    grades_window.configure(bg="darkblue")
+
+    tk.Label(grades_window, text=f"GRADES - {assignment['class_name']} - {assignment['subject']}", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
+
+    top_frame = tk.Frame(grades_window, bg="darkblue")
+    top_frame.pack(pady=5)
+
+    tk.Label(top_frame, text="Term:", bg="darkblue", fg="white").pack(side="left", padx=5)
+    term_var = tk.StringVar()
+    term_dropdown = tk.OptionMenu(top_frame, term_var, "1", "2", "3")
+    term_dropdown.pack(side="left", padx=5)
+
+    tk.Label(top_frame, text="Year:", bg="darkblue", fg="white").pack(side="left", padx=5)
+    year_entry = tk.Entry(top_frame, width=6)
+    year_entry.insert(0, str(date.today().year))
+    year_entry.pack(side="left", padx=5)
+
+    student_entries = []
+
+    canvas = tk.Canvas(grades_window, bg="darkblue", height=300)
+    scrollbar = tk.Scrollbar(grades_window, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+    canvas.pack(fill="both", expand=True)
+    students_frame = tk.Frame(canvas, bg="darkblue")
+    canvas.create_window((0, 0), window=students_frame, anchor="nw")
+    students_frame.bind("<Configure>", lambda e: canvas.configure(
+        scrollregion=canvas.bbox("all")))
+
+    def load_students():
+        for widget in students_frame.winfo_children():
+            widget.destroy()
+        student_entries.clear()
+
+        header = tk.Frame(students_frame, bg="darkblue")
+        header.pack(fill="x", padx=10, pady=5)
+        tk.Label(header, text="Student", width=20, bg="darkblue", fg="yellow", anchor="w").pack(side="left")
+        tk.Label(header, text="Class Score", width=10, bg="darkblue", fg="yellow").pack(side="left")
+        tk.Label(header, text="Exam Score", width=10, bg="darkblue", fg="yellow").pack(side="left")
+
+
+        cursor.execute(
+            "SELECT id, name FROM students WHERE class_name=? AND status='Active'",
+            (assignment['class_name'],))
+        students = cursor.fetchall()
+
+        if len(students) == 0:
+            messagebox.showinfo("Error", "No active students found in this class!")
+            return
+
+        for student_id, student_name in students:
+            row = tk.Frame(students_frame, bg="darkblue")
+            row.pack(pady=3, fill="x", padx=10)
+            tk.Label(row, text=student_name, width=20, bg="darkblue", fg="white", anchor="w").pack(side="left")
+
+            class_entry = tk.Entry(row, width=10)
+            class_entry.pack(side="left", padx=5)
+            exam_entry = tk.Entry(row, width=10)
+            exam_entry.pack(side="left", padx=5)
+
+            student_entries.append((student_id, student_name, class_entry, exam_entry))
+
+    load_students()
+
+    def save_grades():
+        term = term_var.get()
+        year = year_entry.get()
+
+        if not term:
+            messagebox.showinfo("Error", "Please select a term!")
+            return
+        if len(student_entries) == 0:
+            messagebox.showinfo("Error", "No students loaded!")
+            return
+
+        saved_count = 0
+        for student_id, student_name, class_entry, exam_entry in student_entries:
+            class_score = class_entry.get().strip()
+            exam_score = exam_entry.get().strip()
+
+            if class_score == "" and exam_score == "":
+                continue
+
+            try:
+                class_score = int(class_score) if class_score else 0
+                exam_score = int(exam_score) if exam_score else 0
+            except ValueError:
+                messagebox.showinfo("Error", f"Invalid score for {student_name}. Use numbers only.")
+                return
+
+            total = class_score + exam_score
+            grade = get_grade(total)
+
+            cursor.execute("""
+                INSERT INTO grades (student_id, student_name, subject, class_score, exam_score, grade, term, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (student_id, student_name, assignment['subject'], class_score, exam_score, grade, term, year)) 
+            saved_count += 1
+
+        conn.commit()
+        messagebox.showinfo("Success", f"Grades saved for {saved_count} student(s)!")
+        grades_window.destroy()
+
+    tk.Button(grades_window, text="Save Grades", bg="green", fg="white", font=("Arial", 12), command=save_grades).pack(pady=15)                   
+                   
 def open_manage_users():
     users_window = tk.Toplevel(window)
     users_window.title("Manage Users")
@@ -1629,59 +2075,73 @@ button_frame = tk.Frame(window, bg="darkblue")
 button_frame.pack(pady=30)
 
 # Buttons
+
+# -----------------------------------------
+# BUTTON DEFINITIONS & COMMAND
+# -----------------------------------------
+# DAILY OPERATIONS
 btn_register = tk.Button(button_frame, text="Student Registration", font=("Arial", 12), width=25, bg="green", fg="white", command=open_registration)
-btn_register.grid(row=0, column=0, pady=2, padx=2)
-
 btn_attendance = tk.Button(button_frame, text="Attendance", font=("Arial", 12), width=25, bg="green", fg="white", command=open_attendance)
-btn_attendance.grid(row=1, column=0, pady=2, padx=2)
-
 btn_grades = tk.Button(button_frame, text="Grades & Results", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_grades)
-btn_grades.grid(row=2, column=0, pady=2, padx=2)
-
 btn_fees = tk.Button(button_frame, text="Fee Management", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_fees)
-btn_fees.grid(row=3, column=0, pady=2, padx=2)
-
 btn_teachers = tk.Button(button_frame, text="Teacher Management", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_teachers)
-btn_teachers.grid(row=4, column=0, pady=2, padx=2)
-
 btn_view_students = tk.Button(button_frame, text="View All Students", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_students)
-btn_view_students.grid(row=5, column=0, pady=2, padx=2)
 
+# ACCOUNTANT / FESS
 btn_search = tk.Button(button_frame, text="Search Student", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_search)
-btn_search.grid(row=6, column=0, pady=2, padx=2)
-
 btn_attendance_view = tk.Button(button_frame, text="View Attendance", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_attendance)
-btn_attendance_view.grid(row=7, column=0, pady=2, padx=2)
-
 btn_fees_view = tk.Button(button_frame, text="View Fees", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_fees)
-btn_fees_view.grid(row=8, column=0, pady=2, padx=2)
-
 btn_teachers_view = tk.Button(button_frame, text="View Teachers", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_teachers)
-btn_teachers_view.grid(row=9, column=0, pady=2, padx=2)
-
 btn_archive = tk.Button(button_frame, text="Update Student Status", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_update_status)
-btn_archive.grid(row=10, column=0, pady=2, padx=2)
-
-btn_report = tk.Button(button_frame, text="Print Report Card", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_report_card)
-btn_report.grid(row=11, column=0, pady=2, padx=2)
-
-btn_bulk = tk.Button(button_frame, text="Bulk Print Report Cards", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_bulk_report_card)
-btn_bulk.grid(row=12, column=0, pady=2, padx=2)
-
 btn_settings = tk.Button(button_frame, text="Settings", font=("Arial, 12"), width=25, bg="gray", fg="white", command=open_settings)
-btn_settings.grid(row=13, column=0, pady=2, padx=2)
 
+# ADMIN & MANAGEMENT
+btn_report = tk.Button(button_frame, text="Print Report Card", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_report_card)
+btn_bulk = tk.Button(button_frame, text="Bulk Print Report Cards", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_bulk_report_card)
 btn_backup = tk.Button(button_frame, text="Backup Database", font=("Arial", 12), width=25, bg="teal", fg="white", command=backup_database)
-btn_backup.grid(row=14, column=0, pady=2, padx=2)
-
-btn_term = tk.Button(button_frame, text="Term Reports", font=("Arial", 12), width=25, bg="brown", fg="white", command=open_term_report)
-btn_term.grid(row=15, column=0, pady=2, padx=2)
-
 btn_manage_users = tk.Button(button_frame, text="Manage Users", font=("Arial", 12), width=25, bg="navy", fg="white", command=open_manage_users)
-btn_manage_users.grid(row=16, column=0, pady=2, padx=2)
+btn_assign_teacher = tk.Button(button_frame, text="Assign Class/Subject", font=("Arial", 12), width=25, bg="darkblue", fg="white", command=open_assign_teacher)
+btn_teacher_portal = tk.Button(button_frame, text="Teacher Portal", font=("Arial", 12), bg="darkblue", fg="white", command=open_teacher_portal)
+btn_term = tk.Button(button_frame, text="Term Reports", font=("Arial", 12), width=25, bg="brown", fg="white", command=open_term_report)
 
+# EIXT
 btn_exit = tk.Button(button_frame, text="Exit", font=("Arial, 12"), width=25, bg="red", fg="white", command=window.quit)
-btn_exit.grid(row=17, column=0, pady=2, padx=2)
+
+# ==========================================
+# COLUMN 0: DAILY OPERATIONS
+# ==========================================
+btn_register.grid(row=0, column=0, pady=3, padx=5)
+btn_attendance.grid(row=1, column=0, pady=3, padx=5)
+btn_grades.grid(row=2, column=0, pady=3, padx=5)
+btn_fees.grid(row=3, column=0, pady=3, padx=5)
+btn_teachers.grid(row=4, column=0, pady=3, padx=5)
+btn_view_students.grid(row=5, column=0, pady=3, padx=5)
+
+# ==========================================
+# COLUMN 1: ACCOUNTANT / FINANCE
+# ==========================================
+btn_search.grid(row=0, column=1, pady=3, padx=5)
+btn_attendance_view.grid(row=1, column=1, pady=3, padx=5)
+btn_fees_view.grid(row=2, column=1, pady=3, padx=5)
+btn_teachers_view.grid(row=3, column=1, pady=3, padx=5)        
+btn_archive.grid(row=4, column=1, pady=3, padx=5)
+btn_settings.grid(row=5, column=1, pady=3, padx=5)
+        
+# ==========================================
+# COLUMN 2: ADMIN & MANAGEMENT
+# ==========================================
+btn_report.grid(row=0, column=2, pady=3, padx=5)
+btn_bulk.grid(row=1, column=2, pady=3, padx=5)
+btn_backup.grid(row=2, column=2, pady=3, padx=5)
+btn_manage_users.grid(row=3, column=2, pady=3, padx=5)
+btn_assign_teacher.grid(row=4, column=2, pady=3, padx=5)
+btn_teacher_portal.grid(row=5, column=2, pady=3, padx=5)
+btn_term.grid(row=6, column=2, pady=3, padx=5)
+
+# ===========================================
+# EXIT BUTTON (Centered across all 3 columns)
+# ===========================================
+btn_exit.grid(row=7, column=0, columnspan=3, pady=3, padx=5)
 
 #Login window
 login_window = tk.Toplevel()
