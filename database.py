@@ -25,6 +25,12 @@ cursor.execute("""
     )
 """)
 
+# Add photo_path column if it doesn't alredy exist (safe for existing database)
+cursor.execute("PRAGMA table_info(students)")
+columns = [col[1] for col in cursor.fetchall()]
+if "photo_path" not in columns:
+    cursor.execute("ALTER TABLE students ADD COLUMN photo_path TEXT")
+
 # Create student archive table
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS student_archive (

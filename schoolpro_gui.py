@@ -15,9 +15,10 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 import os 
 import time 
+import shutil
 
 # Connect to database 
-from database import conn, cursor
+from database import conn, cursor, db_path
 
 def get_setting(key):
     cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
@@ -113,6 +114,26 @@ def open_registration():
     phone_entry = tk.Entry(reg_window, width=30)
     phone_entry.pack(pady=5)
 
+    tk.Label(reg_window, text="Student Photo (optional):", bg="darkblue", fg="white").pack(pady=(10, 0))
+    photo_preview_label = tk.Label(reg_window, text="No photo selected", bg="darkblue", fg="yellow")
+    photo_preview_label.pack()
+
+    selected_photo_path = [None] # usign a list so the nested functioncan update it
+
+    def choose_photo():
+        from tkinter import filedialog
+        file_path = filedialog.askopenfilename(
+            title="Select Student Photo",
+            filetypes=[("Image files", "*.jpg *.jpeg *.png")]
+        )
+        if file_path:
+            selected_photo_path[0] = file_path
+            filename_only = os.path.basename(file_path)
+            photo_preview_label.config(text=f"Selected: {filename_only}", fg="green")
+
+    tk.Button(reg_window, text="Choose Photo", bg="teal", fg="white", font=("Arial", 11), command=choose_photo).pack(pady=5)        
+
+
     def save_student():
         name = name_entry.get()
         age = age_entry.get()
@@ -125,9 +146,20 @@ def open_registration():
 
         house = house_var.get()
         student_code = generate_student_id()
+        photo_path_to_save = ""
+        if selected_photo_path[0]:
+            photos_folder = os.path.join(os.path.dirname(db_path), "student_photos")
+            if not os.path.exists(photos_folder):
+                os.makedirs(photos_folder)
+            file_ext = os.path.splitext(selected_photo_path[0])[1]
+            new_filename = f"{student_code}{file_ext}"
+            destination = os.path.join(photos_folder, new_filename)
+            shutil.copy(selected_photo_path[0], destination)
+            photo_path_to_save = destination
+
         cursor.execute(
-            "INSERT INTO students (name, age, gender, class_name, section, house, parent_name, parent_phone, date_registered, student_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, age, gender, class_name, section, house, parent_name, parent_phone, today, student_code)
+            "INSERT INTO students (name, age, gender, class_name, section, house, parent_name, parent_phone, date_registered, student_code, photo_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, age, gender, class_name, section, house, parent_name, parent_phone, today, student_code, photo_path_to_save)
         ) 
         conn.commit()
         messagebox.showinfo("Success", "Student Registered Successfully!")
@@ -943,16 +975,16 @@ def apply_role(role):
         btn_fees_view.grid(row=2, column=1, pady=3, padx=5)
         btn_teachers_view.grid(row=3, column=1, pady=3, padx=5)        
         btn_archive.grid(row=4, column=1, pady=3, padx=5)
-        btn_settings.grid(row=5, column=1, pady=3, padx=5)
-        
+        btn_backup.grid(row=5, column=1, pady=3, padx=5)
+                
         
         # --- COLUMN 2 (RIGHT) ---
-        btn_report.grid(row=0, column=2, pady=3, padx=5)
-        btn_bulk.grid(row=1, column=2, pady=3, padx=5)
-        btn_backup.grid(row=2, column=2, pady=3, padx=5)
-        btn_manage_users.grid(row=3, column=2, pady=3, padx=5)
-        btn_assign_teacher.grid(row=4, column=2, pady=3, padx=5)
-        btn_teacher_portal.grid(row=5, column=2, pady=3, padx=5)
+        btn_teacher_portal.grid(row=0, column=2, pady=3, padx=5)
+        btn_manage_users.grid(row=1, column=2, pady=3, padx=5)
+        btn_assign_teacher.grid(row=2, column=2, pady=3, padx=5)               
+        btn_report.grid(row=3, column=2, pady=3, padx=5)
+        btn_bulk.grid(row=4, column=2, pady=3, padx=5)
+        btn_settings.grid(row=5, column=2, pady=3, padx=5)
         btn_term.grid(row=6, column=2, pady=3, padx=5)
 
         # BOTTOM: EXIT
@@ -978,6 +1010,7 @@ def apply_role(role):
         btn_backup.grid_remove()
         btn_term.grid_remove()
         btn_manage_users.grid_remove()
+        btn_teacher_portal.grid_remove()
 
         # Only show fees, view fees, exit
         btn_fees.grid(row=1, column=0, pady=4, padx=10)
@@ -1018,9 +1051,14 @@ def open_report_card():
 
     tk.Label(report_window, text="PRINT REPORT CARD", font=("Arial", 16, "bold"), bg="darkblue", fg="white").pack(pady=10)
 
-    tk.Label(report_window, text="Student Name:", bg="darkblue", fg="white").pack()
-    name_entry = tk.Entry(report_window, width=30)
-    name_entry.pack(pady=5)
+    tk.Label(report_window, text="student Name:", bg="darkblue", fg="white").pack()
+    cursor.execute("SELECT DISTINCT name FROM students WHERE status='Active' ORDER BY name")
+    student_names = [row[0] for row in cursor.fetchall()]
+    name_var = tk.StringVar()
+    if student_names:
+        name_var.set(student_names[0])
+    name_dropdown = tk.OptionMenu(report_window, name_var, *student_names)
+    name_dropdown.pack(pady=5)
 
     tk.Label(report_window, text="Class:", bg="darkblue", fg="white").pack()
     class_entry = tk.Entry(report_window, width=30)
@@ -1067,10 +1105,13 @@ def open_report_card():
     fees_entry.pack(pady=3)
 
     def generate_report():
-        student_name = name_entry.get()
+        student_name = name_var.get()
         cursor.execute("SELECT * FROM grades WHERE student_name = ?", (student_name,))
         grade_rows = cursor.fetchall()
-
+        cursor.execute("SELECT photo_path FROM students WHERE name = ?", (student_name,))
+        photo_result = cursor.fetchone()
+        student_photo_path = photo_result[0] if photo_result and photo_result[0] else ""
+        
         if len(grade_rows) == 0:
             messagebox.showinfo("Error", "No grades found for this student!")
             return
@@ -1078,8 +1119,10 @@ def open_report_card():
         total_raw_score = 0
         for grade in grade_rows:
             total_raw_score += int(grade[4]) + int(grade[5])
-        filename = "/home/hafiz/Desktop/" + student_name + "_report_card.pdf"
-
+        desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        filename = os.path.join(desktop_path, student_name + "_report_card.pdf")
+        logo_path = os.path.join(os.path.dirname(db_path), "school_logo.png")    
+        
         doc = SimpleDocTemplate(filename, pagesize=A4,
             leftMargin=0.5*inch, rightMargin=0.5*inch,
             topMargin=0.5*inch, bottomMargin=0.5*inch)
@@ -1124,7 +1167,9 @@ def open_report_card():
         story.append(Paragraph("Generated by SchoolPro Ghana", software_label_style))
 
         # Logo space (left) + school name + subtitle
-        logo_path = "/home/hafiz/Desktop/school_logo.png"
+        desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        filename = os.path.join(desktop_path, student_name + "_report_card.pdf")
+        logo_path = os.path.join(os.path.dirname(db_path), "school_logo.png")          
         if os.path.exists(logo_path):
             logo_cell = Image(logo_path, width=0.9*inch, height=0.9*inch)
         else:
@@ -1132,7 +1177,7 @@ def open_report_card():
                 fontSize=9, alignment=TA_CENTER, textColor=colors.gray))
 
         header_text =[
-            Paragraph("DAARIL QURAN ACADEMY &ndash; WULENSI", school_name_style),
+            Paragraph(get_setting('school_name'), school_name_style),
             Paragraph("<u>STUDENT'S TERMINAL REPORT</u>", subtitle_style)
         ]        
 
@@ -1155,13 +1200,23 @@ def open_report_card():
             [Paragraph("Class Size:", info_label_style), Paragraph(class_size_entry.get(), info_value_style),
              Paragraph("", info_label_style), Paragraph("", info_value_style)],  
         ]
-        info_table = Table(info_data, colWidths=[1.5*inch, 2.0*inch, 1.5*inch, 2.0*inch])
+        info_table = Table(info_data, colWidths=[1.2*inch, 1.55*inch, 1.2*inch, 1.55*inch])
+        if student_photo_path and os.path.exists(student_photo_path):
+            photo_cell = Image(student_photo_path, width=1.0*inch, height=1.2*inch)
+        else:
+            photo_cell = Paragraph("[PHOTO]", ParagraphStyle("PhotoPlaceholder" + suffix,
+                fontSize=9, alignment=TA_CENTER, textCoor=colors.gray))
         info_table.setStyle(TableStyle([
             ("VALING", (0,0), (-1,-1), "TOP"),
             ("TOPPADDING", (0,0), (-1,-1), 3),
             ("BOTTOMPADDING", (0,0), (-1,-1), 3)
         ]))
-        story.append(info_table)
+        info_with_photo = Table([[info_table, photo_cell]], colWidths=[5.5*inch, 1.2*inch])
+        info_with_photo.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (1, 0), (1, 0), "CENTER"),
+        ]))
+        story.append(info_with_photo)
         story.append(Spacer(1, 0.25*inch))
 
         # Academic performance table
@@ -1317,24 +1372,31 @@ def open_bulk_report_card():
         success_count = 0 
         skipped = []
 
-        for student_name, pos_entry, present_entry in student_entries:
+        for idx, (student_name, pos_entry, present_entry) in enumerate(student_entries):
             cursor.execute("SELECT * FROM grades WHERE student_name = ?", (student_name,))
             grade_rows = cursor.fetchall()
 
             if len(grade_rows) == 0:
                 skipped.append(student_name)
                 continue
+
+            cursor.execute("SELECT photo_path FROM students WHERE name = ?", (student_name,))
+            photo_result = cursor.fetchone()
+            student_photo_path = photo_result[0] if photo_result and photo_result[0] else ""
+
             total_raw_score = 0
             for grade in grade_rows:
                 total_raw_score += int(grade[4]) + int(grade[5])
 
-            filename = "/home/hafiz/Desktop/" + student_name + "_report_card_pdf"
-
+            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+            filename = os.path.join(desktop_path, student_name + "_report_card.pdf")
+            logo_path = os.path.join(os.path.dirname(db_path), "school_logo.png")    
+                    
             doc = SimpleDocTemplate(filename, pagesize=A4,
                 leftMargin=0.5*inch, rightMargin=0.5*inch,
                 topMargin=0.5*inch, bottomMargin=0.5*inch)
             
-            suffix = str(int(time.time()))
+            suffix = str(int(time.time())) + "_" + str(idx)
             styles = getSampleStyleSheet()  
 
             software_label_style = ParagraphStyle("SoftwareLabel" + suffix, parent=styles["Normal"],
@@ -1372,7 +1434,9 @@ def open_bulk_report_card():
 
             story.append(Paragraph("Generated by SchoolPro Ghana", software_label_style))
 
-            logo_path = "/home/hafiz/Desktop/school_logo.png"
+            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+            filename = os.path.join(desktop_path, student_name + "_report_card.pdf")
+            logo_path = os.path.join(os.path.dirname(db_path), "school_logo.png")    
             if os.path.exists(logo_path):
                 logo_cell = Image(logo_path, width=0.9*inch, height=0.9*inch)
             else:
@@ -1380,7 +1444,7 @@ def open_bulk_report_card():
                     fontSize=9, alignment=TA_CENTER, textColor=colors.gray))
 
             header_text =[
-                Paragraph("DAARIL QURAN ACADEMY &ndash; WULENSI", school_name_style),
+                Paragraph(get_setting('school_name'), school_name_style),
                 Spacer(1, 0.1*inch),
                 Paragraph("<u>STUDENT'S TERMINAL REPORT</u>", subtitle_style)
             ]        
@@ -1403,13 +1467,25 @@ def open_bulk_report_card():
                 [Paragraph("Class Size:", info_label_style), Paragraph(bulk_class_size_entry.get(), info_value_style),
                  Paragraph("", info_label_style), Paragraph("", info_value_style)],  
             ]
-            info_table = Table(info_data, colWidths=[1.5*inch, 2.0*inch, 1.5*inch, 2.0*inch])
+            info_table = Table(info_data, colWidths=[1.2*inch, 1.55*inch, 1.2*inch, 1.55*inch])
             info_table.setStyle(TableStyle([
                 ("VALING", (0,0), (-1,-1), "TOP"),
                 ("TOPPADDING", (0,0), (-1,-1), 3),
                 ("BOTTOMPADDING", (0,0), (-1,-1), 3)
             ]))
-            story.append(info_table)
+
+            if student_photo_path and os.path.exists(student_photo_path):
+                photo_cell = Image(student_photo_path, width=1.0*inch, height=1.2*inch)
+            else:
+                photo_cell = Paragraph("[PHOTO]", ParagraphStyle("PhotoPlaceholder" + suffix,
+                    fontSize=9, alignment=TA_CENTER, textColor=colors.gray))
+
+            info_with_photo = Table([[info_table, photo_cell]], colWidths=[5.5*inch, 1.2*inch])
+            info_with_photo.setStyle(TableStyle([
+                ("VALING", (0, 0), (-1, -1), "TOP"),
+                ("ALIGN", (1, 0), (1, 0), "CENTER"),
+            ]))
+            story.append(info_with_photo)
             story.append(Spacer(1, 0.25*inch))
 
             table_data = [[
@@ -1465,7 +1541,7 @@ def open_bulk_report_card():
             doc.build(story)
             success_count += 1
 
-        msg = f"Denerated {success_count} reportcard(s) on your Desktop."
+        msg = f"Generated {success_count} reportcard(s) on your Desktop."
         if skipped:
             msg += "\n\nSkipped (no grades found): " + ", ".join(skipped)
         messagebox.showinfo("Bulk Generation Complete", msg)
@@ -2093,15 +2169,15 @@ btn_attendance_view = tk.Button(button_frame, text="View Attendance", font=("Ari
 btn_fees_view = tk.Button(button_frame, text="View Fees", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_fees)
 btn_teachers_view = tk.Button(button_frame, text="View Teachers", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_view_teachers)
 btn_archive = tk.Button(button_frame, text="Update Student Status", font=("Arial, 12"), width=25, bg="green", fg="white", command=open_update_status)
-btn_settings = tk.Button(button_frame, text="Settings", font=("Arial, 12"), width=25, bg="gray", fg="white", command=open_settings)
+btn_backup = tk.Button(button_frame, text="Backup Database", font=("Arial", 12), width=25, bg="teal", fg="white", command=backup_database)
 
 # ADMIN & MANAGEMENT
-btn_report = tk.Button(button_frame, text="Print Report Card", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_report_card)
-btn_bulk = tk.Button(button_frame, text="Bulk Print Report Cards", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_bulk_report_card)
-btn_backup = tk.Button(button_frame, text="Backup Database", font=("Arial", 12), width=25, bg="teal", fg="white", command=backup_database)
+btn_teacher_portal = tk.Button(button_frame, text="Teacher Portal", font=("Arial", 12), bg="darkblue", fg="white", command=open_teacher_portal)
 btn_manage_users = tk.Button(button_frame, text="Manage Users", font=("Arial", 12), width=25, bg="navy", fg="white", command=open_manage_users)
 btn_assign_teacher = tk.Button(button_frame, text="Assign Class/Subject", font=("Arial", 12), width=25, bg="darkblue", fg="white", command=open_assign_teacher)
-btn_teacher_portal = tk.Button(button_frame, text="Teacher Portal", font=("Arial", 12), bg="darkblue", fg="white", command=open_teacher_portal)
+btn_report = tk.Button(button_frame, text="Print Report Card", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_report_card)
+btn_bulk = tk.Button(button_frame, text="Bulk Print Report Cards", font=("Arial", 12), width=25, bg="purple", fg="white", command=open_bulk_report_card)
+btn_settings = tk.Button(button_frame, text="Settings", font=("Arial", 12), width=25, bg="gray", fg="white", command=open_settings)
 btn_term = tk.Button(button_frame, text="Term Reports", font=("Arial", 12), width=25, bg="brown", fg="white", command=open_term_report)
 
 # EIXT
@@ -2125,17 +2201,17 @@ btn_attendance_view.grid(row=1, column=1, pady=3, padx=5)
 btn_fees_view.grid(row=2, column=1, pady=3, padx=5)
 btn_teachers_view.grid(row=3, column=1, pady=3, padx=5)        
 btn_archive.grid(row=4, column=1, pady=3, padx=5)
-btn_settings.grid(row=5, column=1, pady=3, padx=5)
-        
+btn_backup.grid(row=5, column=1, pady=3, padx=5)
+       
 # ==========================================
 # COLUMN 2: ADMIN & MANAGEMENT
 # ==========================================
-btn_report.grid(row=0, column=2, pady=3, padx=5)
-btn_bulk.grid(row=1, column=2, pady=3, padx=5)
-btn_backup.grid(row=2, column=2, pady=3, padx=5)
-btn_manage_users.grid(row=3, column=2, pady=3, padx=5)
-btn_assign_teacher.grid(row=4, column=2, pady=3, padx=5)
-btn_teacher_portal.grid(row=5, column=2, pady=3, padx=5)
+btn_teacher_portal.grid(row=0, column=2, pady=3, padx=5)
+btn_manage_users.grid(row=1, column=2, pady=3, padx=5)
+btn_assign_teacher.grid(row=2, column=2, pady=3, padx=5)
+btn_report.grid(row=3, column=2, pady=3, padx=5)
+btn_bulk.grid(row=4, column=2, pady=3, padx=5)
+btn_settings.grid(row=5, column=2, pady=3, padx=5)
 btn_term.grid(row=6, column=2, pady=3, padx=5)
 
 # ===========================================
